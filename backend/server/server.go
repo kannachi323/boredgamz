@@ -1,90 +1,57 @@
 package server
 
 import (
-	"fmt"
-	"io"
-	"playgomoku/backend/game"
-	"strconv"
-	"sync"
-	"time"
+	"playgomoku/backend/api"
+	"playgomoku/backend/manager"
 
-	"golang.org/x/net/websocket"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 type Server struct {
-	rooms map[string]*Room
-	mu    sync.Mutex
-	startTime time.Time
+	Router       *chi.Mux
+	LobbyManager *manager.LobbyManager
+	//can add db later
 }
 
-func NewServer() *Server {
-	defaultRooms := make(map[string]*Room)
 
-	defaultRooms["sexy"] = &Room{
-		roomID: "sexy",
-		conns: make(map[*websocket.Conn]bool),
-		game: nil,
-		players: make(map[*game.Player]*websocket.Conn),
+func CreateServer() *Server {
+	s := &Server{
+		Router: chi.NewRouter(),
+		LobbyManager: manager.NewLobbyManager(),
 	}
 
-	return &Server{
-		rooms: defaultRooms,
-		startTime: time.Now(),
-	}
+	return s
 }
 
-func (s *Server) HandleWS(ws *websocket.Conn) {
-    ws.Write([]byte(fmt.Sprintf("Incoming WebSocket connection from: %s\n", ws.RemoteAddr())))
+func (s *Server) MountResources() {
+	
+	// create all the lobbies
+	s.LobbyManager.CreateLobby(100, "9x9")
 
-    room := s.rooms["sexy"]
-    if room == nil {
-        fmt.Println("error: room not found")
-        return
-    }
+}
 
-    params := ws.Request().URL.Query()
-    playerID := params.Get("pid")
-    if playerID == "" {
-        fmt.Println("error: player ID not found")
-        return
-    }
+func (s *Server) MountHandlers() {
+	s.Router.Use(cors.Handler(cors.Options{
+		// AllowedOrigins:   []string{"https://foo.com"}, // Use this to allow specific origin hosts
+		AllowedOrigins:   []string{"https://*", "http://*"},
+		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: false,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
+	
+	//all middeware stuff
+	s.Router.Use(middleware.Logger)
 
-    clr := params.Get("clr")
-    color, err := strconv.Atoi(clr)
-    if err != nil {
-        fmt.Println("error: invalid color")
-        ws.Close()
-        return
-    }
+	//all other handlers
+	s.Router.Post("/new-game-state", api.NewGameState)
 
-    newPlayer := &game.Player{
-        PlayerID: playerID,
-        Color:    game.Color(color),
-    }
 
-    room.addConnection(ws, newPlayer)
-    
-	fmt.Println("Player joined room:", room.roomID)
-
-    s.gameLoop(ws, room)
-
-    room.removeConnection(ws)
+	s.Router.Get("/join-lobby", api.JoinLobby(s.LobbyManager))
 }
 
 
-func (s *Server) gameLoop(ws *websocket.Conn, room *Room) {
-	buf := make([]byte, 1024)
-	for {
-		n, err := ws.Read(buf)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			fmt.Println("read error:", err)
-			continue
-		}
-		msg := buf[:n]
-
-		room.broadcast(msg)
-	}
-}

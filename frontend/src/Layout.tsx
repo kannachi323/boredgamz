@@ -1,7 +1,14 @@
 import { NavBar } from "./components/NavBar";
 
-export function Layout() {
-    return <div>
-        <NavBar />
-    </div>
+interface LayoutProps {
+  children : React.ReactNode
+}
+
+export function AppLayout({children} : LayoutProps) {
+  return (
+    <>
+      <NavBar />
+      {children}
+    </>
+  )
 }
