@@ -13,6 +13,8 @@ type Room struct {
 	Player2 *game.Player
 	Game   *game.GameState
 	Quit	chan struct{}
+	closeOnce sync.Once
+	
 }
 
 type RoomManager struct {
@@ -33,13 +35,16 @@ func CreateRoomManager() *RoomManager {
 	return newRoomManager;
 }
 
-func (r *Room) Broadcast(msg ServerMessage) error {
+func (r *Room) Broadcast(msg *ServerMessage) error {
 	b, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
 
 	send := func(p *game.Player) error {
+		if p.Disconnected.Load() {
+			return nil
+		}
 		select {
 		case p.Outgoing <- b:
 			return nil
@@ -48,38 +53,50 @@ func (r *Room) Broadcast(msg ServerMessage) error {
 		}
 	}
 
-	if err1 := send(r.Player1); err1 != nil {
-		return err1
-	}
-	if err2 := send(r.Player2); err2 != nil {
-		return err2
-	}
+	
+	_ = send(r.Player1)
+
+	_ = send(r.Player2)
+
 
 	return nil
 }
 
 func (r *Room) Start() {
 	for {
+		if r.Player1.Disconnected.Load() && r.Player2.Disconnected.Load() {
+			log.Println("Both players disconnected — closing room")
+			r.Close()
+			return
+		}
+
 		select {
 		case msg, ok := <-r.Player1.Incoming:
 			if !ok {
-				r.Close()
-				return
+				//log.Print(r.Player1.Disconnected.Load(), r.Player2.Disconnected.Load())
+				continue
 			}
 			r.handleMessage(r.Player1, msg)
-		
+
 		case msg, ok := <-r.Player2.Incoming:
 			if !ok {
-				r.Close()
-				return
+				//log.Print(r.Player1.Disconnected.Load(), r.Player2.Disconnected.Load())
+				continue
 			}
 			r.handleMessage(r.Player2, msg)
+
+		case <-r.Quit:
+			return
 		}
 	}
 }
 
+
 func (r *Room) Close() {
-	close(r.Quit)
+	r.closeOnce.Do(func() {
+		
+		close(r.Quit)
+	})
 	//TODO: add other clean up methods
 }
 
@@ -88,9 +105,10 @@ func (r *Room) handleMessage(player *game.Player, msg []byte) {
 
 	//TODO: update game state, broadcast updated state to both players
 	newMsg := &ServerMessage{
-		
+		Type: "server",
+		Data: string(msg),
 	}
-	r.Broadcast()
+	r.Broadcast(newMsg)
 }
 
 
@@ -122,8 +140,8 @@ func (rm *RoomManager) CreateNewRoom(player1 *game.Player, player2 *game.Player,
 }
 
 func (rm *RoomManager) AddPlayerToRoom(player *game.Player, room *Room) {
-	rm.mu.RLock()
-	defer rm.mu.RUnlock()
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
 	rm.playerRoomMap[player.ID] = room
 }
 
@@ -139,6 +157,32 @@ func (rm *RoomManager) GetRoom(playerID string) (*Room, bool) {
 	room, ok := rm.playerRoomMap[playerID]
 	
 	return room, ok
+}
+
+func (rm *RoomManager) ReconnectPlayer(playerID string, newPlayer *game.Player) bool {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	room, ok := rm.playerRoomMap[playerID]
+	if !ok {
+		return false
+	}
+
+	if room.Player1.ID == playerID {
+		room.Player1.Conn = newPlayer.Conn
+		room.Player1.Incoming = newPlayer.Incoming
+		room.Player1.Outgoing = newPlayer.Outgoing
+		room.Player1.Disconnected.Store(false)
+		return true
+	} else if room.Player2.ID == playerID {
+		room.Player2.Conn = newPlayer.Conn
+		room.Player2.Incoming = newPlayer.Incoming
+		room.Player2.Outgoing = newPlayer.Outgoing
+		room.Player2.Disconnected.Store(false)
+		return true
+	}
+
+	return false
 }
 
 

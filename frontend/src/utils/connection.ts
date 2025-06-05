@@ -11,6 +11,7 @@ export function createConnection(player: Player, onMessage : (data: ServerMessag
 
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
+    console.log(data)
     onMessage(data)
   }
 

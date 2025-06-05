@@ -27,7 +27,5 @@ export interface Stone {
 
 export interface ServerMessage {
   type: string
-  data: {
-    gameState : GameState
-  }
+  data: GameState
 }

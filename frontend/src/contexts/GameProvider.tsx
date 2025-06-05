@@ -13,10 +13,12 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   function update(payload: ServerMessage) {
     if (payload.type === "gameUpdate") {
-      setGameState(payload.data.gameState)
+      setGameState(payload.data)
       console.log("Game updated:", payload);
     } else if (payload.type === "chat") {
       console.log("Chat message:", payload);
+    } else {
+      console.log("Message: ", payload)
     }
   }
 
