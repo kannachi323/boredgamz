@@ -4,28 +4,64 @@ export interface Conn {
   type: string
 }
 
-export interface GameState {
-  board: Stone[];
+export interface Board {
+  stones: Stone[][];
   size: number;
-  players: {
-    p1: Player;
-    p2: Player;
-  }
+  numStones: number;
+}
+
+export interface Move {
+  r: number;
+  c: number;
+  color: string;
+}
+
+export interface GameState {
+  board: Board;
+  size: number;
+  players: Player[];
   turn: string;
-  status: string;
+  status: GameStatus;
+  lastMove: Move | null;
+}
+
+export interface GameStatus {
+  winner?: string;
+  draw?: boolean;
+  status: "online" | "offline";
+}
+
+export interface User {
+  userID: string;
+  username: string;
+  pfp: string | null;
 }
 
 export interface Player {
-    playerID: string;
-    color: string;
+  playerID: string;
+  color: string;
 }
 
 export interface Stone {
-  color: number
-  colorName: string
+  color: string | null;
 }
 
-export interface ServerMessage {
+export interface ServerResponse {
   type: string
   data: GameState
+}
+
+export interface ClientRequest {
+  type: string
+  data: GameState
+}
+
+export interface LobbyRequest {
+  lobbyType: string 
+  player: Player
+}
+
+export interface Message {
+  sender: string
+  content: string
 }

@@ -94,7 +94,7 @@ func (lobby *Lobby) MatchPlayers() (*Room, bool) {
 		delete(lobby.PlayerMap, player2)
 		lobby.NumPlayers -= 2
 
-		fmt.Println("Matched players:", player1.ID, player2.ID)
+		fmt.Println("Matched players:", player1.PlayerID, player2.PlayerID)
 
 		room := lobby.RoomManager.CreateNewRoom(player1, player2, lobby.LobbyType)
 

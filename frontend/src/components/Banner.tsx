@@ -1,11 +1,17 @@
 
+import { Player } from "../types";
 
-export function PlayerBanner() {
+
+interface Props {
+  player : Player;
+}
+
+
+export function PlayerBanner({ player } : Props) {
   return (
-    <div className="bg-gray-800 text-white p-4 rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-2">Player Banner</h2>
-      <p className="text-sm">This is a placeholder for player-related information.</p>
-      
+    <div className="bg-[#363430] text-white p-2 rounded-lg shadow-md w-full flex flex-row justify-between">
+      <img src={player.color} alt="user's profile picture" className="h-16 w-16 bg-red-50 rounded-md"/>
+      <h2 className="text-xl font-bold mb-2">{player.playerID}</h2>
     </div>
   );
 }

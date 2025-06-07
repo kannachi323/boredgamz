@@ -1,11 +1,11 @@
 import {createContext } from 'react';
-import { GameState, ServerMessage } from '../types';
+import { GameState, ServerResponse } from '../types';
 
 
 interface GameContext {
-  gameState: GameState;
-  setGameState?: (gameState: GameState) => void;
-  update: (payload: ServerMessage) => void;
+  gameState: GameState | null;
+  setGameState: (gameState: GameState) => void;
+  update: (payload: ServerResponse) => void;
   conn: WebSocket | null;
   setConn: (conn: WebSocket) => void;
 }

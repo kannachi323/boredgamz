@@ -8,14 +8,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+
 type Player struct {
-	ID       string `json:"id"`
+	PlayerID       string `json:"playerID"`
 	Username string `json:"username"`
-	Conn     *websocket.Conn
-    Incoming chan []byte
-    Outgoing chan []byte
-	Disconnected atomic.Bool
-	closeOnce sync.Once
+	Conn     *websocket.Conn `json:"-"`
+    Incoming chan []byte `json:"-"`
+    Outgoing chan []byte `json:"-"`
+	Disconnected atomic.Bool `json:"-"`
+	closeOnce sync.Once `json:"-"`
 }
 
 func NewPlayers(p1 *Player, p2 *Player) []*Player {
@@ -31,7 +32,7 @@ func (player *Player) StartReader() {
 		for {
 			_, msg, err := player.Conn.ReadMessage()
 			if err != nil {
-				log.Printf("Player %s disconnected: %v", player.ID, err)
+				log.Printf("Player %s disconnected: %v", player.PlayerID, err)
 				player.Disconnected.Store(true)
 				player.Close()
 				break

@@ -1,57 +1,66 @@
 import { useState } from "react";
 import { Stone } from "../types";
-import { placeStone } from "../utils/game";
 import { useGameContext } from "../hooks/useGameContext";
+import { makeMove } from "../utils/game";
 
 export function GomokuBoard() {
   const { gameState, conn } = useGameContext();
-  const [board, setBoard] = useState<Stone[]>(
-    Array(gameState.size * gameState.size).fill({ colorName: null, color: null })
-  );
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  if (!gameState || !board) {
-    return null; // Or some loading UI
+  const [hoveredIndex, setHoveredIndex] = useState<[number, number] | null>(null);
+
+  if (!gameState || !gameState.board) {
+    return null;
   }
 
   return (
     <div className="flex justify-center h-full w-full relative">
       <img src="/small-board.jpg" alt="gomoku board" className="absolute h-full w-full z-0" />
-      <div className="absolute h-full w-full grid grid-cols-9 grid-rows-9 gap-6 z-10 p-10">
-        {board.map((stone, idx) => (
-          <div
-            key={idx}
-            className="h-14 w-14 z-20 flex justify-center items-center"
-            onClick={() => {
-              if (!stone.colorName) placeStone(conn, idx, setBoard);
-            }}
-            onMouseEnter={() => setHoveredIndex(idx)}
-            onMouseLeave={() => setHoveredIndex(null)}
-          >
-            <StonePiece stone={stone} isHovered={hoveredIndex === idx && !stone.colorName} />
-          </div>
+      <div className="absolute h-full w-full grid grid-cols-9 grid-rows-9 z-10 p-4">
+        {gameState.board.stones.map((row, rowIdx) => (
+          <>
+            {row.map((stone, colIdx) => (
+              <div
+                key={colIdx}
+                className="h-full w-full z-20 flex justify-center items-center"
+                onClick={() => makeMove(conn, gameState, 
+                  { r: rowIdx, c: colIdx, color: gameState.turn === "P1" ? gameState.players[0].color : gameState.players[1].color}
+                )}
+                onMouseEnter={() => setHoveredIndex([rowIdx, colIdx])}
+                onMouseLeave={() => setHoveredIndex(null)}
+              >
+                <StonePiece
+                  stone={stone}
+                  isHovered={
+                    hoveredIndex &&
+                    hoveredIndex[0] === rowIdx &&
+                    hoveredIndex[1] === colIdx &&
+                    !stone.color
+                  }
+                />
+              </div>
+            ))}
+          </>
         ))}
       </div>
     </div>
   );
 }
 
-function StonePiece({ stone, isHovered }: { stone: Stone; isHovered: boolean }) {
-  if (stone.colorName) {
+function StonePiece({ stone, isHovered }: { stone: Stone; isHovered: boolean | null}) {
+  if (stone.color) {
     return (
       <img
-        src={`/${stone.colorName}.svg`}
-        alt={`${stone.colorName} stone`}
-        className="h-14 w-14 opacity-100"
+        src={`/${stone.color}.svg`}
+        alt={`${stone.color} stone`}
+        className="h-full w-full opacity-100"
       />
     );
   }
 
-  // Show hover ghost stone
   if (isHovered) {
     return (
       <img
-        src={`/black.svg`} // or `/white.svg` depending on current turn
+        src={`/black.svg`}
         alt={`preview stone`}
         className="h-14 w-14 opacity-50"
       />

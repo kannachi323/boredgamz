@@ -1,12 +1,15 @@
-import {ServerMessage, Player} from '../types'
+import {ServerResponse, ClientRequest, Player } from '../types'
 
-
-export function createConnection(player: Player, onMessage : (data: ServerMessage) => void) {
-  const socket = new WebSocket(`ws://localhost:3000/join-lobby?type=9x9`);
+export function createConnection(lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) {
+  const socket = new WebSocket(`ws://localhost:3000/join-lobby`);
 
   socket.onopen = () => {
     //TODO: show a popup that starts the game
-
+    socket.send(JSON.stringify({
+      type: "join",
+      lobbyType: lobbyType,
+      player: player,
+    }));
   };
 
   socket.onmessage = (event) => {
@@ -26,7 +29,7 @@ export function createConnection(player: Player, onMessage : (data: ServerMessag
   return socket;
 }
 
-export function sendData(socket: WebSocket, data: object) {
+export function sendData(socket: WebSocket, data: ClientRequest) {
   if (socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify(data));
   } else {

@@ -47,8 +47,6 @@ func (s *Server) MountHandlers() {
 	//all middeware stuff
 	s.Router.Use(middleware.Logger)
 
-	//all other handlers
-	s.Router.Post("/new-game-state", api.NewGameState)
 
 
 	s.Router.Get("/join-lobby", api.JoinLobby(s.LobbyManager))

@@ -14,17 +14,11 @@ type Room struct {
 	Game   *game.GameState
 	Quit	chan struct{}
 	closeOnce sync.Once
-	
 }
 
 type RoomManager struct {
 	playerRoomMap map[string]*Room
 	mu	sync.RWMutex
-}
-
-type ServerMessage struct {
-    Type string      `json:"type"`
-    Data interface{} `json:"data"`
 }
 
 func CreateRoomManager() *RoomManager {
@@ -35,8 +29,8 @@ func CreateRoomManager() *RoomManager {
 	return newRoomManager;
 }
 
-func (r *Room) Broadcast(msg *ServerMessage) error {
-	b, err := json.Marshal(msg)
+func (r *Room) Broadcast(res *ServerResponse) error {
+	b, err := json.Marshal(res)
 	if err != nil {
 		return err
 	}
@@ -76,14 +70,14 @@ func (r *Room) Start() {
 				//log.Print(r.Player1.Disconnected.Load(), r.Player2.Disconnected.Load())
 				continue
 			}
-			r.handleMessage(r.Player1, msg)
+			r.handleRequest(msg)
 
 		case msg, ok := <-r.Player2.Incoming:
 			if !ok {
 				//log.Print(r.Player1.Disconnected.Load(), r.Player2.Disconnected.Load())
 				continue
 			}
-			r.handleMessage(r.Player2, msg)
+			r.handleRequest(msg)
 
 		case <-r.Quit:
 			return
@@ -100,15 +94,34 @@ func (r *Room) Close() {
 	//TODO: add other clean up methods
 }
 
-func (r *Room) handleMessage(player *game.Player, msg []byte) {
-	log.Printf("received message from player %s: %s", player.ID, string(msg))
+func (r *Room) handleRequest(msg []byte) {
+	var req ClientRequest
 
-	//TODO: update game state, broadcast updated state to both players
-	newMsg := &ServerMessage{
-		Type: "server",
-		Data: string(msg),
+	json.Unmarshal(msg, &req)
+	
+	var res *ServerResponse
+
+	clientGameState := &req.Data
+
+	switch (req.Type) {
+	case "move":
+		//update game state here
+		log.Print("move request received")
+
+		game.UpdateGameState(r.Game, clientGameState)
+		res = &ServerResponse{
+			Type: "update",
+			Data: r.Game,
+		}
+	default:
+		res = &ServerResponse{
+			Type: "update",
+			Data: r.Game,
+		}
 	}
-	r.Broadcast(newMsg)
+
+	log.Print("hit this")
+	r.Broadcast(res)
 }
 
 
@@ -116,7 +129,7 @@ func (rm *RoomManager) CreateNewRoom(player1 *game.Player, player2 *game.Player,
 	var size int;
 	switch lobbyType {
 	case "9x9":
-		size = 8
+		size = 9
 	case "15x15":
 		size = 15
 	case "19x19":
@@ -133,8 +146,6 @@ func (rm *RoomManager) CreateNewRoom(player1 *game.Player, player2 *game.Player,
 	//add the players to the playerRoomMap here
 	rm.AddPlayerToRoom(player1, newRoom)
 	rm.AddPlayerToRoom(player2, newRoom)
-
-	go newRoom.Start()
 	
 	return newRoom
 }
@@ -142,13 +153,13 @@ func (rm *RoomManager) CreateNewRoom(player1 *game.Player, player2 *game.Player,
 func (rm *RoomManager) AddPlayerToRoom(player *game.Player, room *Room) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	rm.playerRoomMap[player.ID] = room
+	rm.playerRoomMap[player.PlayerID] = room
 }
 
 func (rm* RoomManager) RemovePlayerFromRoom(player *game.Player) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	delete(rm.playerRoomMap, player.ID)
+	delete(rm.playerRoomMap, player.PlayerID)
 }
 
 func (rm *RoomManager) GetRoom(playerID string) (*Room, bool) {
@@ -168,13 +179,13 @@ func (rm *RoomManager) ReconnectPlayer(playerID string, newPlayer *game.Player) 
 		return false
 	}
 
-	if room.Player1.ID == playerID {
+	if room.Player1.PlayerID == playerID {
 		room.Player1.Conn = newPlayer.Conn
 		room.Player1.Incoming = newPlayer.Incoming
 		room.Player1.Outgoing = newPlayer.Outgoing
 		room.Player1.Disconnected.Store(false)
 		return true
-	} else if room.Player2.ID == playerID {
+	} else if room.Player2.PlayerID == playerID {
 		room.Player2.Conn = newPlayer.Conn
 		room.Player2.Incoming = newPlayer.Incoming
 		room.Player2.Outgoing = newPlayer.Outgoing
