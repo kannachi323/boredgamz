@@ -29,8 +29,16 @@ export function NavBar() {
       </div>
 
       <div className="flex items-center justify-end space-x-4 w-1/3">
-        <button className="px-4 py-1 border border-white rounded">Log In</button>
-        <button className="px-4 py-1 bg-white text-[#363430] rounded">Sign Up</button>
+        <a className="px-4 py-1 border border-white rounded cursor-pointer"
+          href="/login"
+        >
+          Log In
+        </a>
+        <a className="px-4 py-1 border border-white rounded cursor-pointer"
+          href="/signup"
+        >
+          Sign Up
+        </a>
       </div>
     </div>
   );

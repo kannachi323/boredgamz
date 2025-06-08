@@ -67,6 +67,7 @@ func (s *Server) MountHandlers() {
 
 
 	s.Router.Get("/join-lobby", api.JoinLobby(s.LobbyManager))
+	s.Router.Post("/signup", api.SignUp(s.DB))
 }
 
 

@@ -3,9 +3,12 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Database struct {
@@ -37,4 +40,23 @@ func (db *Database) Stop() {
 	if db.Pool != nil {
 		db.Pool.Close()
 	}
+}
+
+func (db *Database) CreateUser(email string, password string) error {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+    if err != nil {
+        return fmt.Errorf("failed to hash password: %w", err)
+    }
+
+    query := "INSERT INTO users (name, email, password, is_admin) VALUES ($1, $2, $3, $4)"
+    _, err = db.Pool.Exec(ctx, query, "Matthew", email, hashedPassword, false)
+    if err != nil {
+        return fmt.Errorf("failed to create user: %w", err)
+    }
+
+    log.Print("User created successfully\n")
+    return nil
 }
