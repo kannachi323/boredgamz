@@ -3,12 +3,14 @@ package main
 import (
 	"net/http"
 	"playgomoku/backend/server"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	godotenv.Load()
     s := server.CreateServer()
-	s.MountResources()
-	s.MountHandlers()
+	defer s.DB.Stop()
 	
 	http.ListenAndServe(":3000", s.Router)
 }

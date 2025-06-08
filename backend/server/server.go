@@ -1,7 +1,9 @@
 package server
 
 import (
+	"fmt"
 	"playgomoku/backend/api"
+	"playgomoku/backend/db"
 	"playgomoku/backend/manager"
 
 	"github.com/go-chi/chi/v5"
@@ -12,7 +14,7 @@ import (
 type Server struct {
 	Router       *chi.Mux
 	LobbyManager *manager.LobbyManager
-	//can add db later
+	DB	*db.Database
 }
 
 
@@ -20,9 +22,24 @@ func CreateServer() *Server {
 	s := &Server{
 		Router: chi.NewRouter(),
 		LobbyManager: manager.NewLobbyManager(),
+		DB: &db.Database{},
 	}
 
+	s.MountDatabase()
+	s.MountResources()
+	s.MountHandlers()
+
+
 	return s
+}
+
+func (s *Server) MountDatabase() {
+	err := s.DB.Start()
+	
+	if err != nil {
+		fmt.Print("could not mount database: ", err)
+	}
+
 }
 
 func (s *Server) MountResources() {
