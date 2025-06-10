@@ -12,8 +12,8 @@ This checklist tracks core progress on building and polishing the backend server
 - [ ] Track `CurrentTurn` in `GameState`
 - [ ] Update game state only on server (AddStoneToBoard, increment turn)
 - [ ] Detect win condition (`IsGomoku`) after each move
-- [ ] Detect draw (board full with no winner)
-- [ ] Broadcast game state to both players after each move
+- [✅ ] Detect draw (board full with no winner)
+- [ ✅] Broadcast game state to both players after each move
 - [ ] Broadcast `"end"` message when game is won or drawn
 
 ---
