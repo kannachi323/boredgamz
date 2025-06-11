@@ -12,15 +12,15 @@ This checklist tracks core progress on building and polishing the backend server
 - [ ] Track `CurrentTurn` in `GameState`
 - [ ] Update game state only on server (AddStoneToBoard, increment turn)
 - [ ] Detect win condition (`IsGomoku`) after each move
-- [✅ ] Detect draw (board full with no winner)
-- [ ✅] Broadcast game state to both players after each move
+- [✅] Detect draw (board full with no winner)
+- [✅] Broadcast game state to both players after each move
 - [ ] Broadcast `"end"` message when game is won or drawn
 
 ---
 
 ## 🧼 Safety and Clean-Up
 
-- [ ] Handle invalid input with proper error messages
+- [✅] Handle invalid input with proper error messages
 - [ ] Close WebSocket connection and channels cleanly
 - [ ] Defer `conn.Close()` in all connection goroutines
 - [ ] Use `sync.Once` to ensure `Room.Close()` is only called once
