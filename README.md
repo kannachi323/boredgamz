@@ -1,7 +1,7 @@
 # ✅ Gomoku Server Development TODO
 
 This checklist tracks core progress on building and polishing the backend server for the Gomoku multiplayer game.
-
+✅
 ---
 
 ## 🧱 Core Functionality
