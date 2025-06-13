@@ -32,7 +32,7 @@ export interface GameStatus {
 }
 
 export interface User {
-  userID: string;
+  id: string;
   username: string;
   pfp: string | null;
 }

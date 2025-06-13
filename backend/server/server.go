@@ -5,9 +5,9 @@ import (
 	"playgomoku/backend/api"
 	"playgomoku/backend/db"
 	"playgomoku/backend/manager"
+	"playgomoku/backend/middleware"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 )
 
@@ -51,23 +51,18 @@ func (s *Server) MountResources() {
 
 func (s *Server) MountHandlers() {
 	s.Router.Use(cors.Handler(cors.Options{
-		// AllowedOrigins:   []string{"https://foo.com"}, // Use this to allow specific origin hosts
 		AllowedOrigins:   []string{"https://*", "http://*"},
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
+		AllowCredentials: true,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 	
-	//all middeware stuff
-	s.Router.Use(middleware.Logger)
 
-
-
-	s.Router.Get("/join-lobby", api.JoinLobby(s.LobbyManager))
+	s.Router.With(middleware.AuthMiddleware).Get("/join-lobby", api.JoinLobby(s.LobbyManager))
 	s.Router.Post("/signup", api.SignUp(s.DB))
+	s.Router.Post("/login", api.LogIn(s.DB))
 }
 
 

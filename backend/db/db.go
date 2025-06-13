@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -57,6 +56,30 @@ func (db *Database) CreateUser(email string, password string) error {
         return fmt.Errorf("failed to create user: %w", err)
     }
 
-    log.Print("User created successfully\n")
     return nil
+}
+
+func (db *Database) GetUserByEmailPassword(email string, password string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var id string
+	var hashedPassword string
+	query := "SELECT id, password FROM users WHERE email = $1"
+	
+	err := db.Pool.QueryRow(ctx, query, email).Scan(&id, &hashedPassword)
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return "", fmt.Errorf("user not found")
+		}
+		return "", fmt.Errorf("failed to get user by email: %w", err)
+	}
+	
+	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	if err != nil {
+		return "", fmt.Errorf("invalid password: %w", err)
+	}
+
+	return id, nil
+
 }

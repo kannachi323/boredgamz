@@ -1,10 +1,12 @@
 import { createBrowserRouter } from 'react-router-dom';
 
 import App from './App';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 import Play from "./pages/Play";
 import Home from "./pages/Home";
 import Signup from './pages/Signup';
+import Login from './pages/Login';
 
 const router = createBrowserRouter([
   {
@@ -12,13 +14,12 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       {index: true, element: <Home />},
-      {path: "play", element: <Play />},
+      {path: "/play", element: <ProtectedRoute><Play /></ProtectedRoute>},
+      {path: '/signup', element: <Signup />},
+      {path: '/login', element: <Login />},
     ],
   },
-  {
-    path: '/signup',
-    element: <Signup />,
-  }
+  
 ]);
 
 export default router;
