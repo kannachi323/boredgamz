@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"playgomoku/backend/db"
 	"playgomoku/backend/utils"
+	"strings"
 )
 
 type SignUpRequest struct {
@@ -17,6 +18,41 @@ type SignUpRequest struct {
 type LogInRequest struct {
 	Email string `json:"email"`
 	Password string `json:"password"`
+}
+
+//auth always returns a user-like object with username and id
+type AuthResponse struct {
+	Username string `json:"username"`
+	UserID string `json:"id"`
+}
+
+func CheckAuth(db *db.Database) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("access_token")
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		tokenStr := cookie.Value
+		userID, err := utils.VerifyJWT(tokenStr)
+		if err != nil {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		email, err := db.GetUserByID(userID)
+		if err != nil {
+			http.Error(w, "User not found", http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(&AuthResponse{
+			Username: strings.Split(email, "@")[0],
+			UserID: userID,
+		})
+	}
+
 }
 
 func SignUp(db *db.Database) http.HandlerFunc {
@@ -35,7 +71,7 @@ func SignUp(db *db.Database) http.HandlerFunc {
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusCreated)
 	}
 }
 
@@ -71,15 +107,10 @@ func LogIn(db *db.Database) http.HandlerFunc {
         Path:     "/",
         HttpOnly: true,
         Secure:   false, //MUST SET TO TRUE IN PRODUCTION
-        SameSite: http.SameSiteStrictMode,
+        SameSite: http.SameSiteLaxMode,
         MaxAge:   3600,
     })
-
-
 		w.WriteHeader(http.StatusOK)
-
-
-
 	}
 }
 

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthContext } from '../hooks/useAuthContext';
 
 export default function Login() {
+  const {setIsAuthenticated, setUser} = useAuthContext();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
@@ -32,7 +34,9 @@ export default function Login() {
       });
 
       if (res.ok) {
-        navigate('/');
+        setIsAuthenticated(true)
+        setUser({id: formData.email, username: formData.email.split('@')[0]})
+        navigate('/play');
       }
       
   };

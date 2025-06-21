@@ -108,7 +108,7 @@ func (r *Room) handleRequest(msg []byte) {
 		//update game state here
 		log.Print("move request received")
 
-		game.UpdateGameState(r.Game, clientGameState)
+		game.UpdateGameState(r .Game, clientGameState)
 		res = &ServerResponse{
 			Type: "update",
 			Data: r.Game,

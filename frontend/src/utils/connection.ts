@@ -2,7 +2,7 @@ import {ServerResponse, ClientRequest, Player } from '../types'
 
 export function createConnection(lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) {
   const socket = new WebSocket(`ws://localhost:3000/join-lobby`);
-
+  console.log(player);
   socket.onopen = () => {
     //TODO: show a popup that starts the game
     socket.send(JSON.stringify({

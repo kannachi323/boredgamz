@@ -35,6 +35,7 @@ func CreateServer() *Server {
 
 func (s *Server) MountDatabase() {
 	err := s.DB.Start()
+	defer s.DB.Stop()
 	
 	if err != nil {
 		fmt.Print("could not mount database: ", err)
@@ -63,6 +64,7 @@ func (s *Server) MountHandlers() {
 	s.Router.With(middleware.AuthMiddleware).Get("/join-lobby", api.JoinLobby(s.LobbyManager))
 	s.Router.Post("/signup", api.SignUp(s.DB))
 	s.Router.Post("/login", api.LogIn(s.DB))
+	s.Router.With(middleware.AuthMiddleware).Get("/check-auth", api.CheckAuth(s.DB))
 }
 
 

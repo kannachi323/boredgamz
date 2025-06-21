@@ -10,6 +10,7 @@ import (
 
 func GenerateJWT(userID string) (string, error) {
     secret := os.Getenv("JWT_SECRET_KEY")
+
     
     claims := &jwt.RegisteredClaims{
         Subject:   userID,
@@ -22,8 +23,10 @@ func GenerateJWT(userID string) (string, error) {
 
 func VerifyJWT(tokenStr string) (string, error) {
     secret := os.Getenv("JWT_SECRET_KEY")
+
+
     token, err := jwt.ParseWithClaims(tokenStr, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
-        return secret, nil
+        return []byte(secret), nil
     })
 
     if err != nil || !token.Valid {

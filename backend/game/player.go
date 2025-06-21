@@ -11,7 +11,7 @@ import (
 
 type Player struct {
 	PlayerID       string `json:"playerID"`
-	Username string `json:"username"`
+	Color string `json:"color"`
 	Conn     *websocket.Conn `json:"-"`
     Incoming chan []byte `json:"-"`
     Outgoing chan []byte `json:"-"`

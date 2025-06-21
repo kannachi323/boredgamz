@@ -18,8 +18,6 @@ func (db *Database) Start() error {
 	ctx := context.Background()
 	dsn := os.Getenv("DATABASE_URL")
 
-	fmt.Print(dsn)
-
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return fmt.Errorf("unable to create connection pool: %w", err)
@@ -81,5 +79,22 @@ func (db *Database) GetUserByEmailPassword(email string, password string) (strin
 	}
 
 	return id, nil
+}
 
+func (db *Database) GetUserByID(userID string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var email string
+	query := "SELECT email FROM users WHERE id = $1"
+	
+	err := db.Pool.QueryRow(ctx, query, userID).Scan(&email)
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return "", fmt.Errorf("user not found")
+		}
+		return "", fmt.Errorf("failed to get user by ID: %w", err)
+	}
+
+	return email, nil
 }

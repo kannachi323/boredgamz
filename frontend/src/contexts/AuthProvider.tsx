@@ -1,20 +1,21 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-
+import { useLocation, useNavigate } from "react-router-dom";
 import { AuthContext } from "./AuthContext";
 
+const protectedRoutes = ["/play"];
 
-
-export const AuthProvider = ({ children } : { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<{ id: string; username: string } | null>(null);
-
+  const [authChecked, setAuthChecked] = useState<boolean>(false);
+ 
   useEffect(() => {
     async function checkAuth() {
       try {
-        const res = await fetch("http://localhost:3000/auth", {
+        const res = await fetch("http://localhost:3000/check-auth", {
           method: "GET",
           credentials: "include",
         });
@@ -31,16 +32,23 @@ export const AuthProvider = ({ children } : { children: React.ReactNode }) => {
         console.error("Auth check failed:", err);
         setIsAuthenticated(false);
         navigate("/signup");
+      } finally {
+        setAuthChecked(true);
       }
     }
-
+  
+  if (protectedRoutes.includes(location.pathname)) {
     checkAuth();
-  }, [navigate]);
+  }
+  }, [location.pathname, navigate]);
 
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated, user, setUser }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, setIsAuthenticated, 
+        user, setUser, authChecked, setAuthChecked}}
+    >
       {children}
     </AuthContext.Provider>
   );
-}
+};

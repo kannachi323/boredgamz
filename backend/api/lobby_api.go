@@ -41,10 +41,11 @@ func JoinLobby(lm *manager.LobbyManager) http.HandlerFunc {
             log.Println("Invalid join message format:", err)
             return
         }
-        log.Print(reqBody.Player.PlayerID)
+
         lobbyType := reqBody.LobbyType
         player := &game.Player{
             PlayerID:       reqBody.Player.PlayerID,
+            Color:         reqBody.Player.Color,
             Conn:     conn,
             Incoming: make(chan []byte, 10),
             Outgoing: make(chan []byte, 10),

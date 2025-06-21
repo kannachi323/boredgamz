@@ -34,7 +34,6 @@ export interface GameStatus {
 export interface User {
   id: string;
   username: string;
-  pfp: string | null;
 }
 
 export interface Player {

@@ -1,5 +1,5 @@
 import {createContext } from 'react';
-import { GameState, ServerResponse } from '../types';
+import { GameState, Player, ServerResponse } from '../types';
 
 
 interface GameContext {
@@ -8,6 +8,8 @@ interface GameContext {
   update: (payload: ServerResponse) => void;
   conn: WebSocket | null;
   setConn: (conn: WebSocket) => void;
+  player: Player;
+  setPlayer: (player: Player) => void;
 }
 
 export const GameContext = createContext<GameContext | undefined>(undefined);

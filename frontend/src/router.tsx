@@ -1,7 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 
 import App from './App';
-import { ProtectedRoute } from './components/ProtectedRoute';
 
 import Play from "./pages/Play";
 import Home from "./pages/Home";
@@ -14,7 +13,7 @@ const router = createBrowserRouter([
     element: <App />,
     children: [
       {index: true, element: <Home />},
-      {path: "/play", element: <ProtectedRoute><Play /></ProtectedRoute>},
+      {path: "/play", element: <Play />},
       {path: '/signup', element: <Signup />},
       {path: '/login', element: <Login />},
     ],

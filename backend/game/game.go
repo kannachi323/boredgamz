@@ -63,9 +63,10 @@ func UpdateGameState(gameState *GameState, clientGameState *GameState) {
 			return
 		}
 		//if no win or draw, just update the turn
-		if (gameState.Turn == "P1") {
+		switch gameState.Turn {
+		case "P1":
 			gameState.Turn = "P2"
-		} else if (gameState.Turn == "P2") {
+		case "P2":
 			gameState.Turn = "P1"
 		}
 
