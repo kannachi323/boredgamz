@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"playgomoku/backend/api"
 	"playgomoku/backend/db"
@@ -18,6 +19,7 @@ import (
 	"playgomoku/backend/utils"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
@@ -127,7 +129,7 @@ func TestAuthMiddleware(t *testing.T) {
 		json.NewEncoder(w).Encode(resp)
 	})
 
-	token, err := utils.GenerateJWT("f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0")
+	token, err := utils.GenerateAccessJWT("f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0")
 	require.NoError(t, err)
 
 	handler := middleware.AuthMiddleware(dummyHandler)
@@ -161,7 +163,7 @@ func TestCheckAuth(t *testing.T) {
 	s := CreateTestServer()
 	
 
-	token, err := utils.GenerateJWT("f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0")
+	token, err := utils.GenerateAccessJWT("f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0")
 	require.NoError(t, err)
 
 	req, err := http.NewRequest("GET", "/check-auth", nil)
@@ -222,6 +224,69 @@ func TestLogIn(t *testing.T) {
 	req := httptest.NewRequest("POST", "/login", bytes.NewReader(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
 	
+	rr := executeRequest(req, s)
+	checkResponseCode(t, http.StatusOK, rr.Code)
+}
+
+func TestLogOut(t *testing.T) {
+	require.NoError(t, ResetTestDB(testDB))
+	s := CreateTestServer()
+
+	req := httptest.NewRequest("GET", "/logout", nil)
+	
+	token, err := utils.GenerateAccessJWT("f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0")
+	require.NoError(t, err)
+
+	req.AddCookie(&http.Cookie{
+		Name:  "access_token",
+		Value: token,
+	})
+
+	rr := executeRequest(req, s)
+	checkResponseCode(t, http.StatusOK, rr.Code)
+
+	// Check if the cookie is cleared
+	cookie := rr.Result().Cookies()[0]
+	require.Equal(t, "access_token", cookie.Name)
+	require.Equal(t, "", cookie.Value)
+	require.Equal(t, http.StatusOK, rr.Code)
+}
+
+func TestJWTRefresh(t *testing.T) {
+	require.NoError(t, ResetTestDB(testDB))
+	s := CreateTestServer()
+
+	req := httptest.NewRequest("GET", "/refresh", nil)
+
+    secret := os.Getenv("JWT_SECRET_KEY")
+
+    expiredAccessClaims := &jwt.RegisteredClaims{
+		Subject:   "f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0",
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(-1 * time.Minute)),
+	}
+
+	expiredAccessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, expiredAccessClaims).SignedString([]byte(secret))
+	require.NoError(t, err)
+
+	// Create a valid refresh token (e.g., expires in 7 days)
+	refreshClaims := &jwt.RegisteredClaims{
+		Subject:   "f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0",
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
+	}
+
+	validRefreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(secret))
+	require.NoError(t, err)
+
+	req.AddCookie(&http.Cookie{
+		Name:  "access_token",
+		Value: expiredAccessToken,
+	})
+	req.AddCookie(&http.Cookie{
+		Name:  "refresh_token",
+		Value: validRefreshToken,
+	})
+
+
 	rr := executeRequest(req, s)
 	checkResponseCode(t, http.StatusOK, rr.Code)
 }

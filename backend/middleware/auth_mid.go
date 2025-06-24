@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"playgomoku/backend/utils"
 )
@@ -20,8 +19,12 @@ func AuthMiddleware(next http.Handler) http.Handler {
         tokenStr := cookie.Value
         userID, err := utils.VerifyJWT(tokenStr)
         if err != nil {
-            log.Println("JWT verification failed:", err)
             http.Error(w, "Invalid token", http.StatusUnauthorized)
+            return
+        }
+
+        if userID == "" {
+            http.Error(w, "no user with this id", http.StatusUnauthorized)
             return
         }
 
