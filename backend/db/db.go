@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -61,20 +62,21 @@ func (db *Database) GetUserByEmailPassword(email string, password string) (strin
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	log.Println(email, password);
+
 	var id string
 	var hashedPassword string
 	query := "SELECT id, password FROM users WHERE email = $1"
 	
 	err := db.Pool.QueryRow(ctx, query, email).Scan(&id, &hashedPassword)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
-			return "", fmt.Errorf("user not found")
-		}
+		log.Println("error fetching user:", err)
 		return "", fmt.Errorf("failed to get user by email: %w", err)
 	}
 	
 	err = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
+		log.Println("invalid password:", err)
 		return "", fmt.Errorf("invalid password: %w", err)
 	}
 

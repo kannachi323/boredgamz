@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthContext } from '../hooks/useAuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 
 export default function Login() {
-  const {setIsAuthenticated, setUser} = useAuthContext();
+  const {setIsAuthenticated, setUser, login} = useAuthStore();
   const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -24,20 +25,12 @@ export default function Login() {
       return;
       }
 
-      const res = await fetch("http://localhost:3000/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ email: formData.email, password: formData.password }),
-      });
-
-      if (res.ok) {
+      if (await login(formData.email, formData.password)) {
         setIsAuthenticated(true)
         setUser({id: formData.email, username: formData.email.split('@')[0]})
         navigate('/play');
       }
+
       
   };
 

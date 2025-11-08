@@ -59,15 +59,18 @@ func (lm *LobbyManager) CreateLobby(maxPlayers int, lobbyType string) *Lobby {
 	return lobby
 }
 
-func AddPlayerToQueue(lobby *Lobby, player *game.Player) {
+func (lm* LobbyManager) AddPlayerToQueue(lobby *Lobby, player *game.Player) {
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+
 	if lobby.NumPlayers < lobby.MaxPlayers {
-		elem := lobby.Queue.PushBack(player)
-		lobby.PlayerMap[player] = elem
+		slot := lobby.Queue.PushBack(player)
+		lobby.PlayerMap[player] = slot
 		lobby.NumPlayers++
 	}
 }
 
-func RemovePlayerFromQueue(lobby *Lobby, player *game.Player) {
+func (lm* LobbyManager) RemovePlayerFromQueue(lobby *Lobby, player *game.Player) {
 	if elem, ok := lobby.PlayerMap[player]; ok {
 		lobby.Queue.Remove(elem)
 		delete(lobby.PlayerMap, player)
@@ -75,7 +78,7 @@ func RemovePlayerFromQueue(lobby *Lobby, player *game.Player) {
 	}
 }
 
-func (lobby *Lobby) MatchPlayers() (*Room, bool) {
+func (lm* LobbyManager) MatchPlayers(lobby *Lobby) (*Room, bool) {
 	if lobby.NumPlayers >= 2 {
 		e1 := lobby.Queue.Front()
 		e2 := e1.Next()

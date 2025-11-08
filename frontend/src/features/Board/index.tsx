@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Stone } from "../types";
-import { useGameContext } from "../hooks/useGameContext";
-import { makeMove } from "../utils/game";
+import { Stone } from "../../types";
+import { useGameStore } from "../../stores/useGameStore";;
 
-export function GomokuBoard() {
-  const { gameState, conn } = useGameContext();
+export function Board() {
+  const { gameState } = useGameStore();
 
   const [hoveredIndex, setHoveredIndex] = useState<[number, number] | null>(null);
 
@@ -22,9 +21,7 @@ export function GomokuBoard() {
               <div
                 key={colIdx}
                 className="h-full w-full z-20 flex justify-center items-center"
-                onClick={() => makeMove(conn, gameState, 
-                  { r: rowIdx, c: colIdx, color: gameState.turn === "P1" ? gameState.players[0].color : gameState.players[1].color}
-                )}
+                onClick={() => {}}
                 onMouseEnter={() => setHoveredIndex([rowIdx, colIdx])}
                 onMouseLeave={() => setHoveredIndex(null)}
               >

@@ -2,7 +2,7 @@ package manager
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"log"
 	"playgomoku/backend/game"
 	"sync"
@@ -12,7 +12,6 @@ type Room struct {
 	Player1 *game.Player
 	Player2 *game.Player
 	Game   *game.GameState
-	Quit	chan struct{}
 	closeOnce sync.Once
 }
 
@@ -29,100 +28,78 @@ func CreateRoomManager() *RoomManager {
 	return newRoomManager;
 }
 
-func (r *Room) Broadcast(res *ServerResponse) error {
-	b, err := json.Marshal(res)
-	if err != nil {
-		return err
-	}
+func (rm *RoomManager) Broadcast(r *Room, res *ServerResponse) error {
 
-	send := func(p *game.Player) error {
-		if p.Disconnected.Load() {
-			return nil
-		}
-		select {
-		case p.Outgoing <- b:
-			return nil
-		default:
-			return errors.New("player outgoing channel full or blocked")
-		}
-	}
-
-	
-	_ = send(r.Player1)
-
-	_ = send(r.Player2)
-
+	_ = Send(r.Player1, res)
+	_ = Send(r.Player2, res)
 
 	return nil
 }
 
-func (r *Room) Start() {
-	for {
-		if r.Player1.Disconnected.Load() && r.Player2.Disconnected.Load() {
-			log.Println("Both players disconnected — closing room")
-			r.Close()
-			return
-		}
+func Send(p *game.Player, res *ServerResponse) error {
+	msg, err := json.Marshal(res)
+	if err != nil {
+		return err
+	}
 
-		select {
-		case msg, ok := <-r.Player1.Incoming:
-			if !ok {
-				//log.Print(r.Player1.Disconnected.Load(), r.Player2.Disconnected.Load())
-				continue
-			}
-			r.handleRequest(msg)
-
-		case msg, ok := <-r.Player2.Incoming:
-			if !ok {
-				//log.Print(r.Player1.Disconnected.Load(), r.Player2.Disconnected.Load())
-				continue
-			}
-			r.handleRequest(msg)
-
-		case <-r.Quit:
-			return
-		}
+	if p.Disconnected.Load() {
+		return nil
+	}
+	select {
+	case p.Outgoing <- msg:
+		return nil
+	default:
+		return fmt.Errorf("failed to send message to player %s", p.PlayerID	)
 	}
 }
 
-
-func (r *Room) Close() {
-	r.closeOnce.Do(func() {
-		
-		close(r.Quit)
-	})
-	//TODO: add other clean up methods
+func (rm *RoomManager) StartRoom(r *Room) {
+	go func() {
+		for {
+			if r.Player1.Disconnected.Load() && r.Player2.Disconnected.Load() {
+				log.Println("Both players disconnected — closing room")
+				rm.CloseRoom(r)
+				return
+			}
+			
+			select {
+			case msg, ok := <-r.Player1.Incoming:
+				if !ok { continue }
+				rm.handleRequest(r, msg)
+			case msg, ok := <-r.Player2.Incoming:
+				if !ok { continue }
+				rm.handleRequest(r, msg)
+			}
+		}
+	}()
 }
 
-func (r *Room) handleRequest(msg []byte) {
-	var req ClientRequest
 
+func (rm *RoomManager) CloseRoom(r *Room) {
+	r.closeOnce.Do(func() {
+		//TODO: cleanup room resources
+	})
+}
+
+func (rm *RoomManager) handleRequest(r *Room, msg []byte) {
+	var req ClientRequest
 	json.Unmarshal(msg, &req)
-	
-	var res *ServerResponse
 
 	clientGameState := &req.Data
 
+	var res *ServerResponse
+	
 	switch (req.Type) {
 	case "move":
-		//update game state here
-		log.Print("move request received")
-
 		game.UpdateGameState(r .Game, clientGameState)
 		res = &ServerResponse{
 			Type: "update",
 			Data: r.Game,
 		}
-	default:
-		res = &ServerResponse{
-			Type: "update",
-			Data: r.Game,
-		}
 	}
-
-	log.Print("hit this")
-	r.Broadcast(res)
+	rm.Broadcast(r, res)
 }
+
 
 
 func (rm *RoomManager) CreateNewRoom(player1 *game.Player, player2 *game.Player, lobbyType string) *Room {
@@ -140,10 +117,8 @@ func (rm *RoomManager) CreateNewRoom(player1 *game.Player, player2 *game.Player,
 		Player1: player1,
 		Player2: player2,
 		Game: game.CreateGameState(size, player1, player2),
-		Quit: make(chan struct{}),
 	}
 
-	//add the players to the playerRoomMap here
 	rm.AddPlayerToRoom(player1, newRoom)
 	rm.AddPlayerToRoom(player2, newRoom)
 	
@@ -156,7 +131,7 @@ func (rm *RoomManager) AddPlayerToRoom(player *game.Player, room *Room) {
 	rm.playerRoomMap[player.PlayerID] = room
 }
 
-func (rm* RoomManager) RemovePlayerFromRoom(player *game.Player) {
+func (rm *RoomManager) RemovePlayerFromRoom(player *game.Player) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	delete(rm.playerRoomMap, player.PlayerID)

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"playgomoku/backend/db"
 	"playgomoku/backend/middleware"
@@ -120,6 +121,8 @@ func LogIn(db *db.Database) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
+
+		log.Println("user logged in with id:", id)
 
 		token, err := utils.GenerateAccessJWT(id)
 

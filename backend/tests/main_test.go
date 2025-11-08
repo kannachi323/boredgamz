@@ -29,7 +29,7 @@ var testDB *db.Database
 
 func StartTestDB(testDB *db.Database) error {
 	ctx := context.Background()
-	dsn := os.Getenv("DATABASE_URL_TEST")
+	dsn := os.Getenv("DATABASE_TEST_URL")
 
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
@@ -39,6 +39,7 @@ func StartTestDB(testDB *db.Database) error {
 	if err := pool.Ping(ctx); err != nil {
 		return fmt.Errorf("unable to connect to database: %w", err)
 	}
+	
 
 	testDB.Pool = pool
 
@@ -53,7 +54,7 @@ func CloseTestDB(testDB *db.Database) {
 
 func ResetTestDB(testDB *db.Database) error {
 	ctx := context.Background()
-	_, err := testDB.Pool.Exec(ctx, "TRUNCATE TABLE users RESTART IDENTITY CASCADE")
+	_, err := testDB.Pool.Exec(ctx, "TRUNCATE TABLE users RESTART IDENTITY CASCADE;")
 	if err != nil {
 		return fmt.Errorf("failed to truncate test database: %w", err)
 	}
@@ -108,8 +109,6 @@ func TestMain(m *testing.M) {
 		fmt.Println("Failed to start test DB:", err)
 		os.Exit(1)
 	}
-	defer CloseTestDB(testDB)
-
 	code := m.Run()
 
 	os.Exit(code)
@@ -290,6 +289,7 @@ func TestJWTRefresh(t *testing.T) {
 	rr := executeRequest(req, s)
 	checkResponseCode(t, http.StatusOK, rr.Code)
 }
+
 
 	
 	

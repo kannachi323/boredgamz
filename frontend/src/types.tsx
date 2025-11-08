@@ -17,6 +17,7 @@ export interface Move {
 }
 
 export interface GameState {
+  gameID: string;
   board: Board;
   size: number;
   players: Player[];

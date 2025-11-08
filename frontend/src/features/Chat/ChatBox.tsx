@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Message } from '../types';
+import { Message } from '../../types';
 
 export function ChatBox({ username }: { username: string }) {
   const [messages, setMessages] = useState<Message[]>([])

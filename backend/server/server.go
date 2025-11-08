@@ -35,7 +35,6 @@ func CreateServer() *Server {
 
 func (s *Server) MountDatabase() {
 	err := s.DB.Start()
-	defer s.DB.Stop()
 	
 	if err != nil {
 		fmt.Print("could not mount database: ", err)
@@ -68,6 +67,9 @@ func (s *Server) MountHandlers() {
 	s.Router.With(middleware.AuthMiddleware).Get("/logout", api.LogOut())
 	s.Router.With(middleware.AuthMiddleware).Get("/check-auth", api.CheckAuth(s.DB))
 	s.Router.Get("/refresh", api.RefreshAuth(s.DB))
+
+
+	s.Router.Get("/hello", api.HelloWorld())
 }
 
 

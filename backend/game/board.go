@@ -88,8 +88,6 @@ func IsGomoku(stones [][]*Stone, move *Move, color string) bool {
 			return true
 		}
 	}
-	
 	return false
-
 }
 

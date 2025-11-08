@@ -1,7 +1,6 @@
 package game
 
 import (
-	"log"
 	"sync"
 	"sync/atomic"
 
@@ -32,7 +31,6 @@ func (player *Player) StartReader() {
 		for {
 			_, msg, err := player.Conn.ReadMessage()
 			if err != nil {
-				log.Printf("Player %s disconnected: %v", player.PlayerID, err)
 				player.Disconnected.Store(true)
 				player.Close()
 				break

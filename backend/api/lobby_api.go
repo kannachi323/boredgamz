@@ -19,7 +19,6 @@ var upgrader = websocket.Upgrader{
 func JoinLobby(lm *manager.LobbyManager) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         if r.Header.Get("Connection") != "Upgrade" && r.Header.Get("Upgrade") != "websocket" {
-			log.Println("Ignoring non-WebSocket request")
 			http.Error(w, "Expected WebSocket upgrade", http.StatusUpgradeRequired)
 			return
 		}
@@ -51,29 +50,17 @@ func JoinLobby(lm *manager.LobbyManager) http.HandlerFunc {
             Outgoing: make(chan []byte, 10),
         }
 
-        lobby, ok := lm.GetLobby(lobbyType)
-        if !ok {
-            // create a new lobby if it doesn't exist
-            log.Print("brooo")
-            return
-        }
+        lobby, _:= lm.GetLobby(lobbyType)
+        lm.AddPlayerToQueue(lobby, player)
+        room, accept := lm.MatchPlayers(lobby)
 
-        manager.AddPlayerToQueue(lobby, player)
-        
-        room, accept := lobby.MatchPlayers() //game state will already be created here
-
-        if !accept {
-            // TODO: player continues waiting until timeout
-            log.Print("waiting for more players...")
-        } else {
-            // start the game room
-            log.Print(room.Game.Players[0].PlayerID)
-            go room.Start()
-            room.Broadcast(&manager.ServerResponse{
-                Type: "new",
+        if accept {
+            rm := lobby.RoomManager
+            rm.StartRoom(room)
+            rm.Broadcast(room, &manager.ServerResponse{
+                Type: "update",
                 Data: room.Game,
             })
-            log.Print("bro i got here yesss")
         }
     }
 }
