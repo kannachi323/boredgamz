@@ -9,7 +9,8 @@ interface GameStore {
   setPlayer: (player: Player) => void
   setConnection: (lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) => void
   handler: (payload: ServerResponse) => void
-  send: (socket: WebSocket, data: ClientRequest) => void
+  sendClientRequest: (socket: WebSocket, data: ClientRequest) => void
+  sendLobbyRequest: (socket: WebSocket, data: LobbyRequest) => void
 
 }
 
@@ -33,13 +34,19 @@ export const useGameStore = create<GameStore>((set) => ({
       case 'chat':
         console.log('Chat message:', payload)
         break
+      case 'finish':
+        
     }
   },
-
-  send: (socket: WebSocket, req: ClientRequest) => {
+  sendClientRequest: (socket: WebSocket, req: ClientRequest) => {
+    if (socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify(req));
+  },
+  sendLobbyRequest: (socket: WebSocket, req: LobbyRequest) => {
     if (socket.readyState !== WebSocket.OPEN) return;
     socket.send(JSON.stringify(req));
   }
+
 }))
 
 

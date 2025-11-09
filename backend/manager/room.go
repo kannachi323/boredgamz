@@ -11,7 +11,8 @@ import (
 type Room struct {
 	Player1 *game.Player
 	Player2 *game.Player
-	Game   *game.GameState
+	GameState   *game.GameState
+	Events  chan *ClientRequest
 	closeOnce sync.Once
 }
 
@@ -72,8 +73,22 @@ func (rm *RoomManager) StartRoom(r *Room) {
 			}
 		}
 	}()
+	
+	go func() {
+		for req := range r.Events {
+			log.Printf("Room %s received event: %v\n", r.GameState.GameID, req)
+			switch (req.Type) {
+			case "move":
+				game.UpdateGameStateMove(r.GameState, req.Data)
+				var res *ServerResponse
+				res = &ServerResponse{
+					Type: "update",
+					Data: r.GameState,
+				}
+				rm.Broadcast(r, res)
+			}
+		}}()
 }
-
 
 func (rm *RoomManager) CloseRoom(r *Room) {
 	r.closeOnce.Do(func() {
@@ -82,22 +97,17 @@ func (rm *RoomManager) CloseRoom(r *Room) {
 }
 
 func (rm *RoomManager) handleRequest(r *Room, msg []byte) {
-	var req ClientRequest
-	json.Unmarshal(msg, &req)
-
-	clientGameState := &req.Data
-
-	var res *ServerResponse
-	
-	switch (req.Type) {
-	case "move":
-		game.UpdateGameState(r .Game, clientGameState)
-		res = &ServerResponse{
-			Type: "update",
-			Data: r.Game,
-		}
+	var req *ClientRequest
+	if err := json.Unmarshal(msg, &req); err != nil {
+		log.Println("Invalid client message:", err)
+		return
 	}
-	rm.Broadcast(r, res)
+
+	select {
+	case r.Events <- req:
+	default:
+		log.Printf("Room %s event queue full — dropping message\n", r.GameState.GameID)
+	}
 }
 
 
@@ -112,11 +122,11 @@ func (rm *RoomManager) CreateNewRoom(player1 *game.Player, player2 *game.Player,
 	case "19x19":
 		size = 19
 	}
-	
 	newRoom := &Room{
 		Player1: player1,
 		Player2: player2,
-		Game: game.CreateGameState(size, player1, player2),
+		GameState: game.CreateGameState(size, player1, player2),
+		Events: make(chan *ClientRequest, 50),
 	}
 
 	rm.AddPlayerToRoom(player1, newRoom)

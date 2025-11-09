@@ -27,9 +27,8 @@ export interface GameState {
 }
 
 export interface GameStatus {
-  winner?: string;
-  draw?: boolean;
-  status: "online" | "offline";
+  result: "win" | "draw" | "loss"
+  code: "online" | "offline";
 }
 
 export interface User {
@@ -39,6 +38,7 @@ export interface User {
 
 export interface Player {
   playerID: string;
+  playerName: string;
   color: string;
 }
 

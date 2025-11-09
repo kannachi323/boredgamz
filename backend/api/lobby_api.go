@@ -43,7 +43,8 @@ func JoinLobby(lm *manager.LobbyManager) http.HandlerFunc {
 
         lobbyType := reqBody.LobbyType
         player := &game.Player{
-            PlayerID:       reqBody.Player.PlayerID,
+            PlayerID:      reqBody.Player.PlayerID,
+            PlayerName:    reqBody.Player.PlayerName,
             Color:         reqBody.Player.Color,
             Conn:     conn,
             Incoming: make(chan []byte, 10),
@@ -59,7 +60,7 @@ func JoinLobby(lm *manager.LobbyManager) http.HandlerFunc {
             rm.StartRoom(room)
             rm.Broadcast(room, &manager.ServerResponse{
                 Type: "update",
-                Data: room.Game,
+                Data: room.GameState,
             })
         }
     }

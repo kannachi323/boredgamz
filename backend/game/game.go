@@ -1,6 +1,8 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 type GameState struct {
 	GameID   string      `json:"gameID"`
@@ -12,22 +14,19 @@ type GameState struct {
 }
 
 type GameStatus struct {
-	Winner string `json:"winner"`
-	Draw   bool   `json:"draw"`
-	Status string `json:"status"`
+	Result string `json:"result"`
+	Code string `json:"code"`
 }
 
 func CreateGameState(size int, p1 *Player, p2 *Player) *GameState {
-
 	newGameState := &GameState{
 		GameID:  uuid.New().String(),
 		Board:   NewEmptyBoard(size),
 		Turn:    p1.PlayerID,
 		Players: []*Player{p1, p2},
 		Status: &GameStatus{
-			Winner: "",
-			Draw:   false,
-			Status: "online",
+			Result: "",
+			Code: "online",
 		},
 		LastMove: nil,
 	}
@@ -35,39 +34,73 @@ func CreateGameState(size int, p1 *Player, p2 *Player) *GameState {
 	return newGameState
 }
 
-func UpdateGameState(serverGameState *GameState, clientGameState *GameState) {
+/*
+Only UpdateGameStateMove should be called by room handler
+*/
+func UpdateGameStateMove(serverGameState *GameState, clientGameState *GameState) {
 	if IsValidMove(clientGameState.Board, clientGameState.LastMove) {
 
-		AddStoneToBoard(serverGameState.Board, clientGameState.LastMove, &Stone{Color: "white"})
-
-		if IsGomoku(serverGameState.Board.Stones, clientGameState.LastMove, clientGameState.LastMove.Color) {
-			newStatus := &GameStatus{
-				Winner: serverGameState.Turn,
-				Draw:   false,
-				Status: "offline",
-			}
-			serverGameState.Status = newStatus
-
+		if IsGomoku(serverGameState.Board.Stones, clientGameState.LastMove) {
+			updateLastMove(serverGameState, clientGameState.LastMove)
+			updateGameStatus(serverGameState, "win")
 			return
 		}
 
 		if IsDraw(serverGameState.Board) {
-			newStatus := &GameStatus{
-				Winner: "",
-				Draw:   true,
-				Status: "offline",
-			}
-			serverGameState.Status = newStatus
-
+			updateLastMove(serverGameState, clientGameState.LastMove)
+			updateGameStatus(serverGameState, "draw")
 			return
 		}
 
-		switch serverGameState.Turn {
+		updateLastMove(serverGameState, clientGameState.LastMove)
+		updatePlayerTurn(serverGameState)
+
+		clientGameState = serverGameState; //VERY IMPORTANT: server game state is always source of truth
+	}
+}
+
+/*
+Private handlers for updating game state
+*/
+func updatePlayerTurn(serverGameState *GameState) {
+	switch serverGameState.Turn {
 		case "P1":
 			serverGameState.Turn = "P2"
 		case "P2":
 			serverGameState.Turn = "P1"
+	}
+}
+
+func updateLastMove(serverGameState *GameState, move *Move) {
+
+	expectedColor := "black"
+	if serverGameState.LastMove != nil {
+		if serverGameState.LastMove.Color == "black" {
+			expectedColor = "white"
+		} else {
+			expectedColor = "black"
 		}
-		serverGameState.LastMove = clientGameState.LastMove
+	}
+
+	if move == nil || move.Color != expectedColor || !IsValidMove(serverGameState.Board, move) { return }
+	
+	AddStoneToBoard(serverGameState.Board, move, &Stone{Color: move.Color})
+	serverGameState.LastMove = move
+}
+
+func updateGameStatus(serverGameState *GameState, statusType string) {
+	switch statusType {
+	case "win":
+		newStatus := &GameStatus{
+			Result: "win",
+			Code: "offline",
+		}
+		serverGameState.Status = newStatus
+	case "draw":
+		newStatus := &GameStatus{
+			Result: "draw",
+			Code: "offline",
+		}
+		serverGameState.Status = newStatus
 	}
 }

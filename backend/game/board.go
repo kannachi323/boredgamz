@@ -49,40 +49,39 @@ func IsValidMove(board *Board, move *Move) bool {
 		return false
 	}
 
-	return board.Stones[move.R][move.C].Color == ""
+	return board.Stones[move.R][move.C].Color == "" //empty slot
 }
 
 func IsDraw(board *Board) bool {
 	return board.NumStones >= board.Size * board.Size
 }
 
-func IsGomoku(stones [][]*Stone, move *Move, color string) bool {
+func IsGomoku(stones [][]*Stone, move *Move) bool {
 	directions := [][2]int{
 		{0, 1},
-		{0, -1},
-		{1, 0},
-		{-1, 0},
+		{1, 0}, 
 		{1, 1},
-		{-1, -1},
 		{1, -1},
-		{-1, 1},
 	}
 
 	row := move.R
 	col := move.C
-
-	count := 0
+	var count int
 
 	for _, d := range directions {
 		dr, dc := d[0], d[1]
-		for i := 0; i < 5; i++ {
-			nr, nc := row + dr, col + dc
-			if nr < 0 || nr >= len(stones) || nc < 0 || nc >= len(stones[0]) {
-				break
-			}
-			if stones[nr][nc] != nil && stones[nr][nc].Color == move.Color {
-				count++
-			}
+		count = 1
+		for i := 1; i < 5; i++ {
+			nr, nc := row + dr * i, col + dc * i
+			if (nr < 0 || nr >= len(stones) || nc < 0 || nc >= len(stones[0])) { break }
+			if (stones[nr][nc] == nil || stones[nr][nc].Color != move.Color) { break }
+			count++
+		}
+		for i := 1; i < 5; i++ {
+			nr, nc := row - dr * i, col - dc * i
+			if (nr < 0 || nr >= len(stones) || nc < 0 || nc >= len(stones[0])) { break }
+			if (stones[nr][nc] == nil || stones[nr][nc].Color != move.Color) { break }
+			count++	
 		}
 		if count >= 5 {
 			return true

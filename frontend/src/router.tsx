@@ -5,9 +5,6 @@ import App from './App';
 import Play from "./pages/Play";
 import Game from './features/Game';
 
-
-
-
 import Home from "./pages/Home";
 import Signup from './pages/Signup';
 import Login from './pages/Login';

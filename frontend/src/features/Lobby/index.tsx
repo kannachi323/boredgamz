@@ -7,7 +7,7 @@ import { Player } from "../../types";
 import { LobbyOptionsPanel } from "./LobbyOptionsPanel";
 
 export function Lobby() {
-  const { isAuthenticated, user, checkAuth } = useAuthStore();
+  const { checkAuth } = useAuthStore();
   const { setPlayer, setConnection, player, handler } = useGameStore();
   const navigate = useNavigate();
 
@@ -21,13 +21,14 @@ export function Lobby() {
 
       const player: Player = {
         playerID: user.id,
+        playerName: user.username,
         color: 'white',
       };
 
       setPlayer(player);
     };
     check()
-  }, [isAuthenticated, user, navigate, setPlayer, checkAuth])
+  }, [])
 
   if (!player) {
     //TODO: navigate to error screen
