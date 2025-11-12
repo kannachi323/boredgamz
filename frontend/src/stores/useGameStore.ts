@@ -56,7 +56,7 @@ export const useGameStore = create<GameStore>((set) => ({
 
 
 function join(lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) : WebSocket {
-  const socket = new WebSocket(`ws://localhost:3000/join-lobby`);
+  const socket = new WebSocket(`ws://${import.meta.env.VITE_ROOT}/join-lobby`);
 
   socket.onopen = () => {
     const lobbyReq : LobbyRequest = {
