@@ -58,9 +58,7 @@ func RefreshAuth(db *db.Database) http.HandlerFunc {
 			Secure:   true,
 			SameSite: http.SameSiteLaxMode,
 		})
-
 		w.WriteHeader(http.StatusOK)
-
 	}
 }
 

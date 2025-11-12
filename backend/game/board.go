@@ -26,7 +26,6 @@ func NewEmptyBoard(size int) *Board {
 			stones[i][j] = &Stone{Color: ""}
 		}
 	}
-	
 
 	emptyBoard := &Board{
 		Stones: stones,

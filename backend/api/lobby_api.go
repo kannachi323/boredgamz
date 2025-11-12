@@ -42,26 +42,31 @@ func JoinLobby(lm *manager.LobbyManager) http.HandlerFunc {
         }
 
         lobbyType := reqBody.LobbyType
+        lobby, _:= lm.GetLobby(lobbyType)
+        
         player := &game.Player{
             PlayerID:      reqBody.Player.PlayerID,
             PlayerName:    reqBody.Player.PlayerName,
             Color:         reqBody.Player.Color,
+            Clock:      nil,
             Conn:     conn,
             Incoming: make(chan []byte, 10),
             Outgoing: make(chan []byte, 10),
         }
 
-        lobby, _:= lm.GetLobby(lobbyType)
         lm.AddPlayerToQueue(lobby, player)
-        room, accept := lm.MatchPlayers(lobby)
-
-        if accept {
+        players, success := lm.MatchPlayers(lobby)
+        
+        if success {
             rm := lobby.RoomManager
-            rm.StartRoom(room)
+
+		    room := rm.CreateNewRoom(players[0], players[1], lobby.LobbyType)
+
             rm.Broadcast(room, &manager.ServerResponse{
                 Type: "update",
                 Data: room.GameState,
             })
+            rm.StartRoom(room)
         }
     }
 }

@@ -2,6 +2,7 @@
 import { Dropdown } from "./Dropdown";
 import { CgProfile } from "react-icons/cg";
 import { useAuthStore } from "../stores/useAuthStore";
+import { useNavigate } from "react-router-dom";
 
 
 export function NavBar() {
@@ -41,6 +42,7 @@ export function NavBar() {
 
 function UserAuth() {
   const { isAuthenticated, user, logout } = useAuthStore();
+  const navigate = useNavigate();
 
   return (
     <>
@@ -48,7 +50,7 @@ function UserAuth() {
         <>
           <CgProfile className="text-4xl cursor-pointer" />
           <Dropdown label={user?.username || "annonymous"} items={[
-          <button onClick={() =>logout()}>Log out</button>
+          <button onClick={() =>logout(() => navigate('/'))}>Log out</button>
           ]} />
 
         </>

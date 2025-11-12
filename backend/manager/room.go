@@ -2,10 +2,11 @@ package manager
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"playgomoku/backend/game"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type Room struct {
@@ -13,6 +14,8 @@ type Room struct {
 	Player2 *game.Player
 	GameState   *game.GameState
 	Events  chan *ClientRequest
+	Timeout chan string
+	Connection chan string
 	closeOnce sync.Once
 }
 
@@ -31,38 +34,49 @@ func CreateRoomManager() *RoomManager {
 
 func (rm *RoomManager) Broadcast(r *Room, res *ServerResponse) error {
 
-	_ = Send(r.Player1, res)
-	_ = Send(r.Player2, res)
+	Send(r.Player1, res)
+	Send(r.Player2, res)
 
 	return nil
 }
 
-func Send(p *game.Player, res *ServerResponse) error {
+func Send(p *game.Player, res *ServerResponse) {
 	msg, err := json.Marshal(res)
 	if err != nil {
-		return err
+		log.Println("unable to send messages")
+		return
 	}
+	
+	if p.Disconnected.Load() { return }
 
-	if p.Disconnected.Load() {
-		return nil
-	}
 	select {
 	case p.Outgoing <- msg:
-		return nil
 	default:
-		return fmt.Errorf("failed to send message to player %s", p.PlayerID	)
 	}
 }
 
 func (rm *RoomManager) StartRoom(r *Room) {
+	r.Player1.StartPlayer()
+	r.Player2.StartPlayer()
+
+
+	rm.StartPlayersListener(r)
+	rm.StartEventsListener(r)
+	rm.StartTimeoutListener(r)
+	rm.StartConnectionListener(r)
+}
+
+func (rm *RoomManager) CloseRoom(r *Room) {
+	r.closeOnce.Do(func() {
+		r.Player1.ClosePlayer()
+		r.Player2.ClosePlayer()
+	})
+}
+
+func (rm *RoomManager) StartPlayersListener(r *Room) {
 	go func() {
 		for {
-			if r.Player1.Disconnected.Load() && r.Player2.Disconnected.Load() {
-				log.Println("Both players disconnected — closing room")
-				rm.CloseRoom(r)
-				return
-			}
-			
+			if r.Player1.Disconnected.Load() && r.Player2.Disconnected.Load() { return }
 			select {
 			case msg, ok := <-r.Player1.Incoming:
 				if !ok { continue }
@@ -70,16 +84,20 @@ func (rm *RoomManager) StartRoom(r *Room) {
 			case msg, ok := <-r.Player2.Incoming:
 				if !ok { continue }
 				rm.handleRequest(r, msg)
+			default:
+				//no incoming messages
 			}
 		}
 	}()
-	
+}
+
+func (rm *RoomManager) StartEventsListener(r *Room) {
 	go func() {
 		for req := range r.Events {
 			log.Printf("Room %s received event: %v\n", r.GameState.GameID, req)
 			switch (req.Type) {
 			case "move":
-				game.UpdateGameStateMove(r.GameState, req.Data)
+				game.UpdateGameState(r.GameState, req.Data)
 				var res *ServerResponse
 				res = &ServerResponse{
 					Type: "update",
@@ -87,13 +105,63 @@ func (rm *RoomManager) StartRoom(r *Room) {
 				}
 				rm.Broadcast(r, res)
 			}
-		}}()
+		}
+	}()
 }
 
-func (rm *RoomManager) CloseRoom(r *Room) {
-	r.closeOnce.Do(func() {
-		//TODO: cleanup room resources
-	})
+func (rm *RoomManager) StartTimeoutListener(r *Room) {
+	go func() {
+		for playerID := range r.Timeout {
+			if (r.GameState.Status.Code == "offline") { return }
+			var res *ServerResponse
+			game.UpdateGameStatus(r.GameState, "timeout", playerID)
+			res = &ServerResponse{
+				Type: "update",
+				Data: r.GameState,
+			}
+			rm.Broadcast(r, res)
+		}
+	}()
+}
+
+func (rm *RoomManager) StartConnectionListener(r *Room) {
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+
+		var p1Time, p2Time time.Duration
+		const maxTime = 10 * time.Second
+
+		for range ticker.C {
+			if (r.GameState.Status.Code == "offline") { return }
+			if r.Player1.Disconnected.Load() {
+				p1Time += 2 * time.Second
+				log.Println("Player 1 disconnected for ", p1Time)
+				if p1Time >= maxTime {
+					select {
+					case r.Timeout <- r.Player1.PlayerID:
+					default:
+					}
+					return
+				}
+			} else {
+				p1Time = 0
+			}
+			if r.Player2.Disconnected.Load() {
+				p2Time += 2 * time.Second
+				log.Println("Player 2 disconnected for ", p2Time)
+				if p2Time >= maxTime {
+					select {
+					case r.Timeout <- r.Player2.PlayerID:
+					default:
+					}
+					return
+				}
+			} else {
+				p2Time = 0
+			}
+		}
+	}()
 }
 
 func (rm *RoomManager) handleRequest(r *Room, msg []byte) {
@@ -110,8 +178,6 @@ func (rm *RoomManager) handleRequest(r *Room, msg []byte) {
 	}
 }
 
-
-
 func (rm *RoomManager) CreateNewRoom(player1 *game.Player, player2 *game.Player, lobbyType string) *Room {
 	var size int;
 	switch lobbyType {
@@ -127,8 +193,21 @@ func (rm *RoomManager) CreateNewRoom(player1 *game.Player, player2 *game.Player,
 		Player2: player2,
 		GameState: game.CreateGameState(size, player1, player2),
 		Events: make(chan *ClientRequest, 50),
+		Timeout: make(chan string),
 	}
 
+	//IMPORTANT: Link player timeout to room timeout channel
+	player1.Clock = &game.PlayerClock{
+		Remaining: 30 * time.Second,
+		IsActive: atomic.Bool{},
+		Timeout: newRoom.Timeout,
+	}
+	player2.Clock = &game.PlayerClock{
+		Remaining: 30 * time.Second,
+		IsActive: atomic.Bool{},
+		Timeout: newRoom.Timeout,
+	}
+		
 	rm.AddPlayerToRoom(player1, newRoom)
 	rm.AddPlayerToRoom(player2, newRoom)
 	
@@ -180,9 +259,3 @@ func (rm *RoomManager) ReconnectPlayer(playerID string, newPlayer *game.Player) 
 
 	return false
 }
-
-
-
-
-
-

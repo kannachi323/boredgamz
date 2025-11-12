@@ -9,18 +9,25 @@ lobby will be in charge of matching players quickly
 import (
 	"container/list"
 	"fmt"
+	"log"
 	"sync"
 
 	"playgomoku/backend/game"
 )
 
 type Lobby struct {
-	Queue  *list.List
-	PlayerMap map[*game.Player]*list.Element
+	WhiteQueue  *list.List
+	BlackQueue 	*list.List
+	PlayerMap map[*game.Player]*LobbySlot
 	NumPlayers	int
 	MaxPlayers	int
 	LobbyType	string
 	RoomManager *RoomManager
+}
+
+type LobbySlot struct {
+	Element *list.Element
+	Queue *list.List
 }
 
 type LobbyManager struct {
@@ -47,8 +54,9 @@ func (lm *LobbyManager) CreateLobby(maxPlayers int, lobbyType string) *Lobby {
 	defer lm.mu.Unlock()
 
 	lobby := &Lobby{
-		Queue: list.New(),
-		PlayerMap: make(map[*game.Player]*list.Element),
+		WhiteQueue: list.New(),
+		BlackQueue: list.New(),
+		PlayerMap: make(map[*game.Player]*LobbySlot),
 		NumPlayers: 0,
 		MaxPlayers: maxPlayers,
 		LobbyType: lobbyType,
@@ -63,52 +71,56 @@ func (lm* LobbyManager) AddPlayerToQueue(lobby *Lobby, player *game.Player) {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 
-	if lobby.NumPlayers < lobby.MaxPlayers {
-		slot := lobby.Queue.PushBack(player)
-		lobby.PlayerMap[player] = slot
-		lobby.NumPlayers++
+	if lobby.NumPlayers >= lobby.MaxPlayers { return }
+	if _, exists := lobby.PlayerMap[player]; exists { return }
+
+	var elem *list.Element
+	var queue *list.List
+	switch player.Color {
+	case "white":
+		log.Println("Adding player to white queue:", player.PlayerID)
+		elem = lobby.WhiteQueue.PushBack(player)
+		queue = lobby.WhiteQueue
+	case "black":
+		log.Println("Adding player to black queue:", player.PlayerID)
+		elem = lobby.BlackQueue.PushBack(player)
+		queue = lobby.BlackQueue
+	default:
+		return
 	}
+	lobby.PlayerMap[player] = &LobbySlot{
+		Element: elem,
+		Queue: queue,
+	}
+	lobby.NumPlayers++
 }
 
 func (lm* LobbyManager) RemovePlayerFromQueue(lobby *Lobby, player *game.Player) {
-	if elem, ok := lobby.PlayerMap[player]; ok {
-		lobby.Queue.Remove(elem)
-		delete(lobby.PlayerMap, player)
-		lobby.NumPlayers--
-	}
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+
+	slot, ok := lobby.PlayerMap[player]
+	if !ok { return }
+
+	slot.Queue.Remove(slot.Element)
+	delete(lobby.PlayerMap, player)
+	lobby.NumPlayers--
 }
 
-func (lm* LobbyManager) MatchPlayers(lobby *Lobby) (*Room, bool) {
-	if lobby.NumPlayers >= 2 {
-		e1 := lobby.Queue.Front()
-		e2 := e1.Next()
+func (lm* LobbyManager) MatchPlayers(lobby *Lobby) ([]*game.Player, bool) {
+	if lobby.WhiteQueue.Len() == 0 || lobby.BlackQueue.Len() == 0 { return nil, false }
 
-		if e1 == nil || e2 == nil {
-			return nil, false
-		}
+	e1 := lobby.WhiteQueue.Front()
+	e2 := lobby.BlackQueue.Front()
+	playerWhite := e1.Value.(*game.Player)
+	playerBlack := e2.Value.(*game.Player)
 
-		player1 := e1.Value.(*game.Player)
-		player2 := e2.Value.(*game.Player)
+	lm.RemovePlayerFromQueue(lobby, playerWhite)
+	lm.RemovePlayerFromQueue(lobby, playerBlack)
 
-		// Remove both players from queue and player map
-		lobby.Queue.Remove(e1)
-		lobby.Queue.Remove(e2)
-		delete(lobby.PlayerMap, player1)
-		delete(lobby.PlayerMap, player2)
-		lobby.NumPlayers -= 2
+	if (playerWhite.PlayerID == playerBlack.PlayerID) { return nil, false }
 
-		fmt.Println("Matched players:", player1.PlayerID, player2.PlayerID)
+	fmt.Println("Matched players:", playerWhite.PlayerID, playerBlack.PlayerID)
 
-		room := lobby.RoomManager.CreateNewRoom(player1, player2, lobby.LobbyType)
-
-		player1.StartReader()
-		player1.StartWriter()
-
-		player2.StartReader()
-		player2.StartWriter()
-
-		return room, true
-	}
-
-	return nil, false
+	return []*game.Player{playerWhite, playerBlack}, true
 }

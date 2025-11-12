@@ -4,9 +4,11 @@ import { ServerResponse, GameState, Player, ClientRequest, LobbyRequest } from '
 interface GameStore {
   gameState: GameState | null
   conn: WebSocket | null
-  player: Player | null
+  player: Player
+  opponent: Player
   
   setPlayer: (player: Player) => void
+  setOpponent: (opponent: Player) => void
   setConnection: (lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) => void
   handler: (payload: ServerResponse) => void
   sendClientRequest: (socket: WebSocket, data: ClientRequest) => void
@@ -17,24 +19,27 @@ interface GameStore {
 export const useGameStore = create<GameStore>((set) => ({
   gameState: null,
   conn: null,
-  player: null,
+  player: { playerID: '', playerName: '', color: 'black', playerClock: null },
+  opponent: { playerID: '', playerName: '', color: 'black', playerClock: null },
 
   setPlayer: (player: Player) => set({ player }),
+  setOpponent: (opponent: Player) => set({ opponent }),
 
   setConnection: (lobbyType, player, onMessage) => {
+    console.log(player)
     const conn = join(lobbyType, player, onMessage)
     set({ conn })
   },
 
   handler: (payload : ServerResponse) => {
     switch (payload.type) {
-      case 'update':
-        set({ gameState: payload.data })
-        break
+      case 'update':{
+        set({ gameState: payload.data});
+        break;
+      }
       case 'chat':
         console.log('Chat message:', payload)
         break
-      case 'finish':
         
     }
   },

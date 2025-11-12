@@ -1,6 +1,8 @@
 package game
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 )
 
@@ -8,70 +10,78 @@ type GameState struct {
 	GameID   string      `json:"gameID"`
 	Board    *Board      `json:"board"`
 	Players  []*Player   `json:"players"`
-	Turn     string      `json:"turn"`
 	Status   *GameStatus `json:"status"`
 	LastMove *Move       `json:"lastMove"`
+	Turn     string      `json:"turn"`
+	Timeout  chan struct{} `json:"-"`
 }
 
 type GameStatus struct {
 	Result string `json:"result"`
 	Code string `json:"code"`
+	Winner string `json:"winner,omitempty"`
 }
 
 func CreateGameState(size int, p1 *Player, p2 *Player) *GameState {
+	var turn string
+	if p1.Color == "black" {
+		turn = p1.PlayerID
+	} else {
+		turn = p2.PlayerID
+	}
+
 	newGameState := &GameState{
 		GameID:  uuid.New().String(),
 		Board:   NewEmptyBoard(size),
-		Turn:    p1.PlayerID,
-		Players: []*Player{p1, p2},
+		Players: NewPlayers(p1, p2),
 		Status: &GameStatus{
 			Result: "",
 			Code: "online",
+			Winner: "",
 		},
 		LastMove: nil,
+		Turn: turn,
 	}
-
 	return newGameState
 }
 
 /*
-Only UpdateGameStateMove should be called by room handler
+Only UpdateGameState should be called by room handler
 */
-func UpdateGameStateMove(serverGameState *GameState, clientGameState *GameState) {
-	if IsValidMove(clientGameState.Board, clientGameState.LastMove) {
+func UpdateGameState(serverGameState *GameState, clientGameState *GameState) {
+	
+	err := UpdateLastMove(serverGameState, clientGameState.LastMove)
+	if err != nil { return }
 
-		if IsGomoku(serverGameState.Board.Stones, clientGameState.LastMove) {
-			updateLastMove(serverGameState, clientGameState.LastMove)
-			updateGameStatus(serverGameState, "win")
-			return
-		}
-
-		if IsDraw(serverGameState.Board) {
-			updateLastMove(serverGameState, clientGameState.LastMove)
-			updateGameStatus(serverGameState, "draw")
-			return
-		}
-
-		updateLastMove(serverGameState, clientGameState.LastMove)
-		updatePlayerTurn(serverGameState)
-
-		clientGameState = serverGameState; //VERY IMPORTANT: server game state is always source of truth
+	if IsGomoku(serverGameState.Board.Stones, clientGameState.LastMove) {
+		UpdateGameStatus(serverGameState, "win", serverGameState.Turn)
+		return
 	}
+
+	if IsDraw(serverGameState.Board) {
+		UpdateGameStatus(serverGameState, "draw", "")
+		return
+	}
+
+
+	UpdatePlayerClocks(serverGameState);
+	UpdatePlayerTurn(serverGameState);
+
+	clientGameState = serverGameState; //VERY IMPORTANT: server game state is always source of truth
 }
 
 /*
 Private handlers for updating game state
 */
-func updatePlayerTurn(serverGameState *GameState) {
+func UpdatePlayerTurn(serverGameState *GameState) {
 	switch serverGameState.Turn {
-		case "P1":
-			serverGameState.Turn = "P2"
-		case "P2":
-			serverGameState.Turn = "P1"
+		case serverGameState.Players[0].PlayerID:
+			serverGameState.Turn = serverGameState.Players[1].PlayerID
+		case serverGameState.Players[1].PlayerID:
+			serverGameState.Turn = serverGameState.Players[0].PlayerID
 	}
 }
-
-func updateLastMove(serverGameState *GameState, move *Move) {
+func UpdateLastMove(serverGameState *GameState, move *Move) error {
 
 	expectedColor := "black"
 	if serverGameState.LastMove != nil {
@@ -82,25 +92,41 @@ func updateLastMove(serverGameState *GameState, move *Move) {
 		}
 	}
 
-	if move == nil || move.Color != expectedColor || !IsValidMove(serverGameState.Board, move) { return }
+	if move == nil || move.Color != expectedColor || !IsValidMove(serverGameState.Board, move) { return fmt.Errorf("invalid move") }
 	
 	AddStoneToBoard(serverGameState.Board, move, &Stone{Color: move.Color})
 	serverGameState.LastMove = move
+
+	return nil
 }
 
-func updateGameStatus(serverGameState *GameState, statusType string) {
+func UpdateGameStatus(gs *GameState, statusType string, playerID string) {
 	switch statusType {
 	case "win":
-		newStatus := &GameStatus{
+		gs.Status = &GameStatus{
 			Result: "win",
-			Code: "offline",
+			Code:   "offline",
+			Winner: playerID,
 		}
-		serverGameState.Status = newStatus
 	case "draw":
-		newStatus := &GameStatus{
+		gs.Status = &GameStatus{
 			Result: "draw",
-			Code: "offline",
+			Code:   "offline",
 		}
-		serverGameState.Status = newStatus
+	case "timeout":
+		winner := GetOpponentPlayerByColor(gs, GetPlayerByID(gs, playerID).Color)
+		gs.Status = &GameStatus{
+			Result: "win",
+			Code:   "offline",
+			Winner: winner.PlayerID,
+		}
 	}
+}
+
+func UpdatePlayerClocks(serverGameState *GameState) {
+	currentPlayer := GetPlayerByColor(serverGameState, serverGameState.LastMove.Color)
+	opponentPlayer := GetOpponentPlayerByColor(serverGameState, serverGameState.LastMove.Color)
+
+	currentPlayer.StopClock()
+	opponentPlayer.StartClock()
 }

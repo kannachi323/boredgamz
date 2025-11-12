@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/useAuthStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 
 export default function Login() {
   const {setIsAuthenticated, setUser, login} = useAuthStore();
@@ -74,12 +74,6 @@ export default function Login() {
           <p className="text-blue-300 self-center">Don't have an account? <a href="/signup" className="underline">Sign up</a></p>
         </form>
       </div>
-
-
-
-
-
-
     </div>
    
   );

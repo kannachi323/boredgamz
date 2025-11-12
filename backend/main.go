@@ -9,9 +9,11 @@ import (
 
 func main() {
 	godotenv.Load()
-    s := server.CreateServer()
+  s := server.CreateServer()
 	
 	defer s.DB.Stop()
 	
-	http.ListenAndServe(":3000", s.Router)
+	if err := http.ListenAndServe(":3000", s.Router); err != nil {
+    panic(err)
+	}
 }

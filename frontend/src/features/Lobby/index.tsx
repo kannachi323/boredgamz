@@ -1,34 +1,10 @@
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
-
-import { useAuthStore } from "../../stores/useAuthStore";
 import { useGameStore } from "../../stores/useGameStore";
-import { Player } from "../../types";
 import { LobbyOptionsPanel } from "./LobbyOptionsPanel";
 
 export function Lobby() {
-  const { checkAuth } = useAuthStore();
-  const { setPlayer, setConnection, player, handler } = useGameStore();
-  const navigate = useNavigate();
+  const { setConnection, player, handler } = useGameStore();
 
-  useEffect(() => {
-    const check = async () => {
-      const success = await checkAuth(() => navigate('/login'));
-      if (!success) return;
-
-      const user = useAuthStore.getState().user;
-      if (!user) return;
-
-      const player: Player = {
-        playerID: user.id,
-        playerName: user.username,
-        color: 'white',
-      };
-
-      setPlayer(player);
-    };
-    check()
-  }, [])
+  
 
   if (!player) {
     //TODO: navigate to error screen
@@ -55,9 +31,6 @@ export function Lobby() {
           <p className="text-5xl">13x13</p>
           <img src="/mid-board.jpg" alt="gomoku board" className="w-full h-auto" />
         </div>
-
-
-
         <div className="bg-[#302e2e] w-1/3 p-5 flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-[#1b1918]
           hover:bg-[#3d3a3a] transition-colors duration-300 cursor-pointer">
           <p className="text-5xl">19x19</p>
