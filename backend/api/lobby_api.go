@@ -43,12 +43,12 @@ func JoinLobby(lm *manager.LobbyManager) http.HandlerFunc {
 
         lobbyType := reqBody.LobbyType
         lobby, _:= lm.GetLobby(lobbyType)
-        
+
         player := &game.Player{
             PlayerID:      reqBody.Player.PlayerID,
             PlayerName:    reqBody.Player.PlayerName,
             Color:         reqBody.Player.Color,
-            Clock:      nil,
+            Clock:      reqBody.Player.Clock,
             Conn:     conn,
             Incoming: make(chan []byte, 10),
             Outgoing: make(chan []byte, 10),

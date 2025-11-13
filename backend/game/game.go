@@ -19,7 +19,7 @@ type GameState struct {
 type GameStatus struct {
 	Result string `json:"result"`
 	Code string `json:"code"`
-	Winner string `json:"winner,omitempty"`
+	Winner *Player `json:"winner,omitempty"`
 }
 
 func CreateGameState(size int, p1 *Player, p2 *Player) *GameState {
@@ -37,7 +37,7 @@ func CreateGameState(size int, p1 *Player, p2 *Player) *GameState {
 		Status: &GameStatus{
 			Result: "",
 			Code: "online",
-			Winner: "",
+			Winner: nil,
 		},
 		LastMove: nil,
 		Turn: turn,
@@ -106,7 +106,7 @@ func UpdateGameStatus(gs *GameState, statusType string, playerID string) {
 		gs.Status = &GameStatus{
 			Result: "win",
 			Code:   "offline",
-			Winner: playerID,
+			Winner: GetPlayerByID(gs, playerID),
 		}
 	case "draw":
 		gs.Status = &GameStatus{
@@ -114,11 +114,10 @@ func UpdateGameStatus(gs *GameState, statusType string, playerID string) {
 			Code:   "offline",
 		}
 	case "timeout":
-		winner := GetOpponentPlayerByColor(gs, GetPlayerByID(gs, playerID).Color)
 		gs.Status = &GameStatus{
 			Result: "win",
 			Code:   "offline",
-			Winner: winner.PlayerID,
+			Winner: GetOpponentPlayerByColor(gs, GetPlayerByID(gs, playerID).Color),
 		}
 	}
 }

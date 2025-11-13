@@ -29,7 +29,7 @@ export interface GameState {
 export interface GameStatus {
   result: "win" | "draw" | "loss";
   code: "online" | "offline";
-  winner: string;
+  winner: Player | null;
 }
 
 export interface User {

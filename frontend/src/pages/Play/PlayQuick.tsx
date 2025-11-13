@@ -15,7 +15,7 @@ export function PlayQuick() {
   }, [gameState, navigate, mode])
 
   return (
-    <div className="flex flex-col w-full h-[90vh] p-10 gap-4 "> 
+    <div className="flex flex-col w-full h-[90vh] p-10 gap-4"> 
       {gameState ? <Outlet /> : <Lobby />}
     </div>
   )

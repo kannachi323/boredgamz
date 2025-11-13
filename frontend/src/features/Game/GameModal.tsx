@@ -1,19 +1,15 @@
 import { useGameStore } from "../../stores/useGameStore";
 
 export function GameModal() {
-  const { gameState, player } = useGameStore();
+  const { gameState } = useGameStore();
 
   if (!gameState || gameState.status.code === "online") return null;
 
   let modal: React.ReactNode;
   switch (gameState.status.result) {
     case "win":
-      if (player.playerID === gameState.status.winner) {
-        modal = <GameWinModal />;
-      } else {
-        modal = <GameLossModal />;
-      }
-      break;
+      modal = <GameWinModal />;
+      break; 
     case "draw":
       modal = <GameDrawModal />;
       break;
@@ -29,17 +25,16 @@ export function GameModal() {
 }
 
 function GameWinModal() {
-  return (
-    <div className="bg-[#262322] p-10 rounded-md text-white w-1/2 text-center">
-      YOU WON 🎉
-    </div>
-  );
-}
+  const { gameState } = useGameStore();
+  if (!gameState || !gameState.status.winner) return
 
-function GameLossModal() {
+  const winnerColor = gameState.status.winner.color
+
   return (
     <div className="bg-[#262322] p-10 rounded-md text-white w-1/2 text-center">
-      YOU LOST 😢
+      {winnerColor === 'black' ?
+        <b>Black Won</b> : <b>White Won</b>
+      }
     </div>
   );
 }

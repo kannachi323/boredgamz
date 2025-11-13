@@ -1,6 +1,7 @@
 package game
 
 import (
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,8 +16,8 @@ type Player struct {
 	PlayerName		string `json:"playerName"`
 	Clock *PlayerClock `json:"playerClock"`
 	Conn     *websocket.Conn `json:"-"`
-  Incoming chan []byte `json:"-"`
-  Outgoing chan []byte `json:"-"`
+	Incoming chan []byte `json:"-"`
+	Outgoing chan []byte `json:"-"`
 	Disconnected atomic.Bool `json:"-"`
 	closeOnce sync.Once `json:"-"`
 }
@@ -77,6 +78,7 @@ func (player *Player) StartWriter() {
 
 func (player *Player) StartClock() {
 	ticker := time.NewTicker(1 * time.Second)
+	log.Println("starting time: ", player.Clock.Remaining)
 
 	player.Clock.IsActive.Store(true)
 	lastTick := time.Now()

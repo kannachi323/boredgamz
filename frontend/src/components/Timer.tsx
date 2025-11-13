@@ -7,7 +7,7 @@ export function Timer({ player }: { player: Player }) {
   const [time, setTime] = useState(0);
 
   useEffect(() => {
-    if (!gameState || !player?.playerClock) return;
+    if (!gameState || !player?.playerClock || gameState.status.code !== "online") return;
 
     // Sync with server's remaining time on every update
     const serverSeconds = Math.floor(player.playerClock.remaining / 1e9);

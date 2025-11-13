@@ -198,12 +198,12 @@ func (rm *RoomManager) CreateNewRoom(player1 *game.Player, player2 *game.Player,
 
 	//IMPORTANT: Link player timeout to room timeout channel
 	player1.Clock = &game.PlayerClock{
-		Remaining: 30 * time.Second,
+		Remaining: player1.Clock.Remaining * time.Nanosecond,
 		IsActive: atomic.Bool{},
 		Timeout: newRoom.Timeout,
 	}
 	player2.Clock = &game.PlayerClock{
-		Remaining: 30 * time.Second,
+		Remaining: player2.Clock.Remaining * time.Nanosecond,
 		IsActive: atomic.Bool{},
 		Timeout: newRoom.Timeout,
 	}

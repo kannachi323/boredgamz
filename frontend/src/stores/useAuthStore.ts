@@ -99,6 +99,5 @@ export const useAuthStore = create(
         user: state.user,
       }) as unknown as AuthState,
     }
-    
   )
 )

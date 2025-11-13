@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { ServerResponse, GameState, Player, ClientRequest, LobbyRequest } from '../types'
+import { convertTime } from '../utils.ts'
 
 interface GameStore {
   gameState: GameState | null
@@ -19,8 +20,8 @@ interface GameStore {
 export const useGameStore = create<GameStore>((set) => ({
   gameState: null,
   conn: null,
-  player: { playerID: '', playerName: '', color: 'black', playerClock: null },
-  opponent: { playerID: '', playerName: '', color: 'black', playerClock: null },
+  player: { playerID: '', playerName: '', color: 'black', playerClock: { remaining: convertTime(5, "minutes", "nanoseconds") } },
+  opponent: { playerID: '', playerName: '', color: 'black', playerClock: { remaining: convertTime(5, "minutes", "nanoseconds")} },
 
   setPlayer: (player: Player) => set({ player }),
   setOpponent: (opponent: Player) => set({ opponent }),
@@ -59,6 +60,7 @@ function join(lobbyType: string, player: Player, onMessage : (data: ServerRespon
   const socket = new WebSocket(`ws://${import.meta.env.VITE_ROOT}/join-lobby`);
 
   socket.onopen = () => {
+    console.log(player)
     const lobbyReq : LobbyRequest = {
       lobbyType: lobbyType,
       player: player,
