@@ -28,7 +28,7 @@ export default function Login() {
       if (await login(formData.email, formData.password)) {
         setIsAuthenticated(true)
         setUser({id: formData.email, username: formData.email.split('@')[0]})
-        navigate('/play/quick');
+        navigate('/games');
       }
 
       

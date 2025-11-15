@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { useGameStore } from "../../stores/useGameStore";
-import { convertTime } from '../../utils.ts'
+import { useGameStore } from "../../../stores/useGameStore.ts";
+import { convertTime } from '../../../utils.ts'
 
 
 export function LobbyOptionsPanel() {
