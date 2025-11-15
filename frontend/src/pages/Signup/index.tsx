@@ -33,7 +33,7 @@ export default function SignUp() {
       })
 
       if (res.ok) {
-        navigate('/');
+        navigate('/login');
       }
       
       setFormData({ email: '', password: '' });

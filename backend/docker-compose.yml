@@ -1,7 +1,7 @@
 
 services:
   db:
-    container_name: playgomoku-db
+    container_name: boredgamz-db
     restart: always
     image: postgres:latest
     environment:
@@ -16,7 +16,7 @@ services:
       - ./db/sql/data.sql:/docker-entrypoint-initdb.d/3.data.sql
   
   db-test:
-    container_name: playgomoku-db-test
+    container_name: boredgamz-db-test
     restart: always
     image: postgres:latest
     environment:

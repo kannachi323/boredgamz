@@ -20,8 +20,7 @@ export default function Games() {
               icon={Square}
               bgColor="bg-gradient-to-br from-indigo-700 to-purple-800"
               pattern="linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.1) 75%, rgba(255,255,255,0.1)), linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.1) 75%, rgba(255,255,255,0.1))"
-              playLink="/play/tictactoe"
-              learnLink="/games/tictactoe"
+              playLink="/games/tictactoe"
           />
           <GameCard
               title="Connect Four"
@@ -29,8 +28,7 @@ export default function Games() {
               icon={Grid}
               bgColor="bg-gradient-to-br from-green-700 to-teal-800"
               pattern="linear-gradient(90deg, #ffffff1a 1px, transparent 1px), linear-gradient(#ffffff1a 1px, transparent 1px)"
-              playLink="/play/connectfour"
-              learnLink="/games/connectfour"
+              playLink="/games/connectfour"
           />
           <GameCard
               title="Gomoku"
@@ -38,8 +36,7 @@ export default function Games() {
               icon={Rows}
               bgColor="bg-gradient-to-br from-red-700 to-orange-800"
               pattern="radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px)"
-              playLink="/play/gomoku"
-              learnLink="/games/gomoku"
+              playLink="/games/gomoku"
           />
         </div>
       </div>

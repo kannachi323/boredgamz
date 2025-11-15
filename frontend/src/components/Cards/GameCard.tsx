@@ -6,10 +6,9 @@ interface GameCardProps {
   bgColor: string;
   pattern?: string;
   playLink: string;
-  learnLink: string;
 }
 
-export function GameCard({ title, description, icon: Icon, bgColor, pattern, playLink, learnLink } : GameCardProps) {
+export function GameCard({ title, description, icon: Icon, bgColor, pattern, playLink } : GameCardProps) {
   return (
     <div className={`relative p-8 rounded-3xl shadow-2xl overflow-hidden group h-80 flex flex-col justify-between ${bgColor}`}>
         {/* Background Pattern */}
@@ -30,9 +29,6 @@ export function GameCard({ title, description, icon: Icon, bgColor, pattern, pla
         <div className="relative z-10 flex space-x-4 mt-6">
             <a href={playLink} className="px-6 py-2 bg-white text-gray-900 font-bold rounded-full shadow-lg hover:bg-gray-200 transition-transform duration-300 transform group-hover:scale-105">
                 Play Now
-            </a>
-            <a href={learnLink} className="px-6 py-2 border border-white text-white font-medium rounded-full hover:bg-white hover:text-gray-900 transition-transform duration-300 transform group-hover:scale-105">
-                Learn More
             </a>
         </div>
     </div>

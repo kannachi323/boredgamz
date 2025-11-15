@@ -1,15 +1,15 @@
 import { useEffect } from "react";
 
-import { Timer } from "../../components/Timer"
-import { PlayerBanner } from "../../components/Banner"
+import { Timer } from "../../../components/Timer"
+import { PlayerBanner } from "../../../components/Banner"
 import { GamePanel } from "./GamePanel"
-import { useGameStore } from "../../stores/useGameStore";
-import { useAuthStore } from "../../stores/useAuthStore";
-import { Board } from "../Board"; 
-import { ChatBox } from "../Chat/ChatBox";
-import { GameModal } from "./GameModal";
+import { useGameStore } from "../../../stores/useGameStore";
+import { useAuthStore } from "../../../stores/useAuthStore";
+import { Board } from "../../../features/Board"; 
+import { ChatBox } from "../../../features/Chat/ChatBox";
+import { GameModal } from "./GomokuModal";
 
-export default function Game() {
+export default function GomokuGame() {
   const { gameState, setPlayer, setOpponent, player, opponent } = useGameStore();
   const { user } = useAuthStore();
 

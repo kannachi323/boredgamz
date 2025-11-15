@@ -13,6 +13,7 @@ import (
 
 type Server struct {
 	Router       *chi.Mux
+	APIRouter    *chi.Mux
 	LobbyManager *manager.LobbyManager
 	DB	*db.Database
 }
@@ -24,6 +25,9 @@ func CreateServer() *Server {
 		LobbyManager: manager.NewLobbyManager(),
 		DB: &db.Database{},
 	}
+	s.Router.Route("/api", func(r chi.Router) {
+		s.APIRouter = r.(*chi.Mux)
+	})
 
 	s.MountDatabase()
 	s.MountResources()
@@ -50,7 +54,7 @@ func (s *Server) MountResources() {
 }
 
 func (s *Server) MountHandlers() {
-	s.Router.Use(cors.Handler(cors.Options{
+	s.APIRouter.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
@@ -60,16 +64,16 @@ func (s *Server) MountHandlers() {
 	}))
 	
 
-	s.Router.With(middleware.AuthMiddleware).Get("/join-lobby", api.JoinLobby(s.LobbyManager))
+	s.APIRouter.With(middleware.AuthMiddleware).Get("/join-lobby", api.JoinLobby(s.LobbyManager))
 	
-	s.Router.Post("/signup", api.SignUp(s.DB))
-	s.Router.Post("/login", api.LogIn(s.DB))
-	s.Router.With(middleware.AuthMiddleware).Get("/logout", api.LogOut())
-	s.Router.With(middleware.AuthMiddleware).Get("/check-auth", api.CheckAuth(s.DB))
-	s.Router.Get("/refresh", api.RefreshAuth(s.DB))
+	s.APIRouter.Post("/signup", api.SignUp(s.DB))
+	s.APIRouter.Post("/login", api.LogIn(s.DB))
+	s.APIRouter.With(middleware.AuthMiddleware).Get("/logout", api.LogOut())
+	s.APIRouter.With(middleware.AuthMiddleware).Get("/check-auth", api.CheckAuth(s.DB))
+	s.APIRouter.Get("/refresh", api.RefreshAuth(s.DB))
 
 
-	s.Router.Get("/hello", api.HelloWorld())
+	s.APIRouter.Get("/hello", api.HelloWorld())
 }
 
 

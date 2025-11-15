@@ -1,10 +1,8 @@
-import { useGameStore } from "../../stores/useGameStore";
-import { LobbyOptionsPanel } from "./LobbyOptionsPanel";
+import { useGameStore } from "../../../stores/useGameStore";
+import { LobbyOptionsPanel } from "./GomokuLobbyOptions";
 
-export function Lobby() {
+export function GomokuLobby() {
   const { setConnection, player, handler } = useGameStore();
-
-  
 
   if (!player) {
     //TODO: navigate to error screen
