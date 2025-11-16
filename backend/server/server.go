@@ -5,7 +5,6 @@ import (
 	"playgomoku/backend/api"
 	"playgomoku/backend/db"
 	"playgomoku/backend/manager"
-	"playgomoku/backend/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
@@ -63,17 +62,13 @@ func (s *Server) MountHandlers() {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 	
-
-	s.APIRouter.With(middleware.AuthMiddleware).Get("/join-lobby", api.JoinLobby(s.LobbyManager))
-	
-	s.APIRouter.Post("/signup", api.SignUp(s.DB))
-	s.APIRouter.Post("/login", api.LogIn(s.DB))
-	s.APIRouter.With(middleware.AuthMiddleware).Get("/logout", api.LogOut())
-	s.APIRouter.With(middleware.AuthMiddleware).Get("/check-auth", api.CheckAuth(s.DB))
-	s.APIRouter.Get("/refresh", api.RefreshAuth(s.DB))
-
-
+	//DO NOT REMOVE THIS
 	s.APIRouter.Get("/hello", api.HelloWorld())
+	
+	s.MountAuthHandlers()
+	s.MountLobbyHandlers()
+
+	
 }
 
 

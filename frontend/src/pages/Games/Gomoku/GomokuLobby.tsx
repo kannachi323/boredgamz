@@ -1,13 +1,19 @@
+import { useEffect } from "react";
+
+import { useNavigate } from "react-router-dom";
 import { useGameStore } from "../../../stores/useGameStore";
 import { LobbyOptionsPanel } from "./GomokuLobbyOptions";
 
 export function GomokuLobby() {
-  const { setConnection, player, handler } = useGameStore();
+  const { setConnection, player, handler, gameState } = useGameStore();
+  const navigate = useNavigate();
 
-  if (!player) {
-    //TODO: navigate to error screen
-    return
-  }
+  useEffect(() => {
+    if (gameState?.gameID) {
+      navigate(`/games/gomoku/${gameState.gameID}`)
+    }
+  }, [gameState])
+
   
   return (
     <>

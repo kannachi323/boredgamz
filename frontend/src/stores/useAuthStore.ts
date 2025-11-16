@@ -31,7 +31,7 @@ export const useAuthStore = create(
       setIsAuthenticated: (val) => set({ isAuthenticated: val }),
       setUser: (user) => set({ user }),
       signup: async (email, password) => {
-        const res = await fetch(`https://${import.meta.env.VITE_SERVER_ROOT}/signup`, {
+        const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/signup`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -42,7 +42,7 @@ export const useAuthStore = create(
       },
 
       login: async (email, password) => {
-        const res = await fetch(`https://${import.meta.env.VITE_SERVER_ROOT}/login`, {
+        const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/login`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -54,7 +54,7 @@ export const useAuthStore = create(
         return res.ok;
       },
       logout: async (callback: () => void | Promise<void>) => {
-        const res = await fetch(`https://${import.meta.env.VITE_SERVER_ROOT}/logout`, {
+        const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/logout`, {
           method: "GET",
           credentials: "include",
         });
@@ -66,7 +66,7 @@ export const useAuthStore = create(
         const { setAuthLoading } = get();
         try {
           setAuthLoading(true);
-          const res = await fetch(`https://${import.meta.env.VITE_SERVER_ROOT}/check-auth`, {
+          const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/check-auth`, {
             method: 'GET',
             credentials: 'include',
           })

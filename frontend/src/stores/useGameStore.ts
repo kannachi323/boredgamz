@@ -10,7 +10,7 @@ interface GameStore {
   
   setPlayer: (player: Player) => void
   setOpponent: (opponent: Player) => void
-  setConnection: (lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) => void
+  setConnection: (lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) => WebSocket | null
   handler: (payload: ServerResponse) => void
   sendClientRequest: (socket: WebSocket, data: ClientRequest) => void
   sendLobbyRequest: (socket: WebSocket, data: LobbyRequest) => void
@@ -27,9 +27,9 @@ export const useGameStore = create<GameStore>((set) => ({
   setOpponent: (opponent: Player) => set({ opponent }),
 
   setConnection: (lobbyType, player, onMessage) => {
-    console.log(player)
     const conn = join(lobbyType, player, onMessage)
     set({ conn })
+    return conn
   },
 
   handler: (payload : ServerResponse) => {
@@ -57,7 +57,7 @@ export const useGameStore = create<GameStore>((set) => ({
 
 
 function join(lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) : WebSocket {
-  const socket = new WebSocket(`wss://${import.meta.env.VITE_ROOT}/join-lobby`);
+  const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/join-lobby`);
 
   socket.onopen = () => {
     console.log(player)
@@ -81,6 +81,7 @@ function join(lobbyType: string, player: Player, onMessage : (data: ServerRespon
   socket.onclose = () => {
     //TODO: show popup that signals end of game
   };
-  return socket;
+
+  return socket
 }
 

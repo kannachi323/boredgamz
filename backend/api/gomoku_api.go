@@ -6,24 +6,17 @@ import (
 	"net/http"
 	"playgomoku/backend/game"
 	"playgomoku/backend/manager"
-
-	"github.com/gorilla/websocket"
+	"playgomoku/backend/utils"
 )
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true //remove this in production
-	},
-}
-
-func JoinLobby(lm *manager.LobbyManager) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
+func JoinGomokuLobby(lm *manager.LobbyManager) http.HandlerFunc {
+	 return func(w http.ResponseWriter, r *http.Request) {
         if r.Header.Get("Connection") != "Upgrade" && r.Header.Get("Upgrade") != "websocket" {
 			http.Error(w, "Expected WebSocket upgrade", http.StatusUpgradeRequired)
 			return
 		}
 
-        conn, err := upgrader.Upgrade(w, r, nil)
+        conn, err := utils.UpgradeConnection(w, r)
         if err != nil {
             http.Error(w, "failed to upgrade connection", http.StatusInternalServerError)
             return
@@ -70,3 +63,5 @@ func JoinLobby(lm *manager.LobbyManager) http.HandlerFunc {
         }
     }
 }
+
+func CreateGomokuGame(lm *manager.LobbyManager)
