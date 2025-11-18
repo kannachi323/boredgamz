@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { useNavigate } from "react-router-dom";
-import { useGameStore } from "../../../stores/useGameStore";
+import { useGameStore } from "../../../stores/useGomokuStore";
 import { LobbyOptionsPanel } from "./GomokuLobbyOptions";
 
 export function GomokuLobby() {

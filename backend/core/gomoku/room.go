@@ -1,24 +1,23 @@
 package gomoku
 
 import (
-	"boredgamz/manager"
+	"boredgamz/core"
 	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type GomokuRoom struct {
-	*manager.Room
+	*core.Room
 	GameState *GomokuGameState
 }
 
-func NewGomokuRoom(p1, p2 *manager.Player, gomokuType string) *GomokuRoom {
+func NewGomokuRoom(p1, p2 *core.Player, gomokuType string) *GomokuRoom {
 	newGomokuRoom := &GomokuRoom{
-		Room: &manager.Room{
+		Room: &core.Room{
 			RoomID: uuid.New().String(),
-			Players: []*manager.Player{p1, p2},
+			Players: []*core.Player{p1, p2},
 			Events: make(chan []byte, 100),
 			Timeout: make(chan []byte, 100),
 			GameID: uuid.New().String(),
@@ -29,7 +28,6 @@ func NewGomokuRoom(p1, p2 *manager.Player, gomokuType string) *GomokuRoom {
 	//IMPORTANT: Link player timeout to room timeout channel
 	p1.Clock.Timeout = newGomokuRoom.Timeout
 	p2.Clock.Timeout = newGomokuRoom.Timeout
-		
 
 	return newGomokuRoom
 }
@@ -39,6 +37,7 @@ func (room *GomokuRoom) Start() {
 	go room.startTimeoutListener()
 	go room.startPlayersListener()
 	go room.startConnectionListener()
+
 }
 
 
@@ -57,13 +56,9 @@ func (room *GomokuRoom) Broadcast(res *GomokuServerResponse)  {
 	}
 }
 
-func (room *GomokuRoom) Send(p *manager.Player, res *GomokuServerResponse) {
+func (room *GomokuRoom) Send(p *core.Player, res *GomokuServerResponse) {
 	msg, err := json.Marshal(res)
-	if err != nil {
-		log.Println("unable to send messages")
-		return
-	}
-	
+	if err != nil { return }
 	if p.Disconnected.Load() { return }
 
 	select {
@@ -76,7 +71,6 @@ func (room *GomokuRoom) HandleEvent(raw []byte) {
 	select {
 	case room.Events <- raw:
 	default:
-		log.Printf("Room %s event queue full — dropping message\n", room.GameState.GameID)
 	}
 }
 
@@ -138,7 +132,6 @@ func (room *GomokuRoom) startConnectionListener() {
 		if (room.GameState.Status.Code == "offline") { return }
 		if p1.Disconnected.Load() {
 			p1Time += 2 * time.Second
-			log.Println("Player 1 disconnected for ", p1Time)
 			if p1Time >= maxTime {
 				select {
 				case room.Timeout <- []byte(p1.PlayerID):
@@ -151,7 +144,6 @@ func (room *GomokuRoom) startConnectionListener() {
 		}
 		if p2.Disconnected.Load() {
 			p2Time += 2 * time.Second
-			log.Println("Player 2 disconnected for ", p2Time)
 			if p2Time >= maxTime {
 				select {
 				case room.Timeout <- []byte(p2.PlayerID):
@@ -164,7 +156,6 @@ func (room *GomokuRoom) startConnectionListener() {
 		}
 	}
 }
-
 
 func (room *GomokuRoom) startTimeoutListener() {
 	for playerID := range room.Timeout {

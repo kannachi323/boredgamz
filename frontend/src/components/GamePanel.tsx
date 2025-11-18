@@ -1,7 +1,6 @@
 
 import { FaRegFlag } from "react-icons/fa";
 
-
 export function GamePanel() {
 
   return (

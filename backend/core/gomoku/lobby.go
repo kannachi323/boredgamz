@@ -1,7 +1,7 @@
 package gomoku
 
 import (
-	"boredgamz/manager"
+	"boredgamz/core"
 	"container/list"
 	"fmt"
 	"log"
@@ -9,11 +9,11 @@ import (
 )
 
 type GomokuLobby struct {
-	*manager.Lobby
+	*core.Lobby
 	GomokuType string
 	WhiteQueue *list.List
 	BlackQueue *list.List
-	PlayerMap  map[*manager.Player]*GomokuLobbySlot
+	PlayerMap  map[*core.Player]*GomokuLobbySlot
 	mu sync.RWMutex
 }
 
@@ -22,9 +22,9 @@ type GomokuLobbySlot struct {
 	Queue *list.List
 }
 
-func NewGomokuLobby(maxPlayers int, gomokuType string) manager.LobbyController {
+func NewGomokuLobby(maxPlayers int, gomokuType string) core.LobbyController {
 	gomokuLobby := &GomokuLobby{
-		Lobby: &manager.Lobby{
+		Lobby: &core.Lobby{
 			NumPlayers: 0,
 			MaxPlayers: maxPlayers,
 			RoomManager: nil,
@@ -32,12 +32,12 @@ func NewGomokuLobby(maxPlayers int, gomokuType string) manager.LobbyController {
 		GomokuType: gomokuType,
 		WhiteQueue: list.New(),
 		BlackQueue: list.New(),
-		PlayerMap: make(map[*manager.Player]*GomokuLobbySlot),
+		PlayerMap: make(map[*core.Player]*GomokuLobbySlot),
 	}
 	return gomokuLobby
 }
 
-func (lobby *GomokuLobby) AddPlayer(player *manager.Player) {
+func (lobby *GomokuLobby) AddPlayer(player *core.Player) {
 	lobby.mu.Lock()
 	defer lobby.mu.Unlock()
 
@@ -65,7 +65,7 @@ func (lobby *GomokuLobby) AddPlayer(player *manager.Player) {
 	lobby.NumPlayers++
 }
 
-func (lobby *GomokuLobby) RemovePlayer(player *manager.Player) {
+func (lobby *GomokuLobby) RemovePlayer(player *core.Player) {
 	lobby.mu.Lock()
 	defer lobby.mu.Unlock()
 
@@ -77,13 +77,13 @@ func (lobby *GomokuLobby) RemovePlayer(player *manager.Player) {
 	lobby.NumPlayers--
 }
 
-func (lobby *GomokuLobby) MatchPlayers() ([]*manager.Player, bool) {
+func (lobby *GomokuLobby) MatchPlayers() ([]*core.Player, bool) {
 	if lobby.WhiteQueue.Len() == 0 || lobby.BlackQueue.Len() == 0 { return nil, false }
 
 	e1 := lobby.WhiteQueue.Front()
 	e2 := lobby.BlackQueue.Front()
-	playerWhite := e1.Value.(*manager.Player)
-	playerBlack := e2.Value.(*manager.Player)
+	playerWhite := e1.Value.(*core.Player)
+	playerBlack := e2.Value.(*core.Player)
 
 	lobby.RemovePlayer(playerWhite)
 	lobby.RemovePlayer(playerBlack)
@@ -92,5 +92,5 @@ func (lobby *GomokuLobby) MatchPlayers() ([]*manager.Player, bool) {
 
 	fmt.Println("Matched players:", playerWhite.PlayerID, playerBlack.PlayerID)
 
-	return []*manager.Player{playerWhite, playerBlack}, true
+	return []*core.Player{playerWhite, playerBlack}, true
 }

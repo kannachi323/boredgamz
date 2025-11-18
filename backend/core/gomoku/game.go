@@ -1,7 +1,7 @@
 package gomoku
 
 import (
-	"boredgamz/manager"
+	"boredgamz/core"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -10,13 +10,13 @@ import (
 type GomokuGameStatus struct {
 	Result string `json:"result"`
 	Code string `json:"code"`
-	Winner *manager.Player `json:"winner,omitempty"`
+	Winner *core.Player `json:"winner,omitempty"`
 }
 
 type GomokuGameState struct {
 	GameID   string      `json:"gameID"`
 	Board    *Board      `json:"board"`
-	Players  []*manager.Player   `json:"players"`
+	Players  []*core.Player   `json:"players"`
 	Status   *GomokuGameStatus `json:"status"`
 	LastMove *Move       `json:"lastMove"`
 	Turn     string      `json:"turn"`
@@ -24,7 +24,7 @@ type GomokuGameState struct {
 }
 
 
-func NewGomokuGameState(gomokuType string, p1 *manager.Player, p2 *manager.Player) *GomokuGameState {
+func NewGomokuGameState(gomokuType string, p1 *core.Player, p2 *core.Player) *GomokuGameState {
 	var turn string
 	if p1.Color == "black" {
 		turn = p1.PlayerID
@@ -47,7 +47,7 @@ func NewGomokuGameState(gomokuType string, p1 *manager.Player, p2 *manager.Playe
 	newGameState := &GomokuGameState{
 		GameID:  uuid.New().String(),
 		Board:   NewEmptyBoard(size),
-		Players: []*manager.Player{p1, p2},
+		Players: []*core.Player{p1, p2},
 		Status: &GomokuGameStatus{
 			Result: "",
 			Code: "online",

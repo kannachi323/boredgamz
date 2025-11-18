@@ -1,15 +1,15 @@
 package api
 
 import (
-	"boredgamz/manager"
-	"boredgamz/manager/gomoku"
+	"boredgamz/core"
+	"boredgamz/core/gomoku"
 	"boredgamz/utils"
 	"encoding/json"
 	"log"
 	"net/http"
 )
 
-func JoinGomokuLobby(lm *manager.LobbyManager) http.HandlerFunc {
+func JoinGomokuLobby(lm *core.Lobbycore) http.HandlerFunc {
 	 return func(w http.ResponseWriter, r *http.Request) {
         log.Println("New join gomoku lobby request")
         if r.Header.Get("Connection") != "Upgrade" && r.Header.Get("Upgrade") != "websocket" {
@@ -40,7 +40,7 @@ func JoinGomokuLobby(lm *manager.LobbyManager) http.HandlerFunc {
 			log.Println("Lobby not found:", reqBody.LobbyType)
 			return
 		}
-        player := manager.NewPlayer(
+        player := core.NewPlayer(
             reqBody.Player.PlayerID,
             reqBody.Player.PlayerName, 
             reqBody.Player.Color,
@@ -54,10 +54,13 @@ func JoinGomokuLobby(lm *manager.LobbyManager) http.HandlerFunc {
 
         p1 := players[0]
 		p2 := players[1]
-
-
         room := gomoku.NewGomokuRoom(p1, p2, reqBody.LobbyType)
+     
+
+        p1.StartPlayer()
+        p2.StartPlayer()
         room.Start()
+
         
         room.Broadcast(&gomoku.GomokuServerResponse{
             Type: "update",

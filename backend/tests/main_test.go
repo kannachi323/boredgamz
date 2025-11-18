@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"boredgamz/api"
+	"boredgamz/core"
 	"boredgamz/db"
-	"boredgamz/manager"
 	"boredgamz/middleware"
 	"boredgamz/server"
 	"boredgamz/utils"
@@ -75,7 +75,7 @@ func ResetTestDB(testDB *db.Database) error {
 func CreateTestServer() *server.Server {
 	s := &server.Server{
 		Router: chi.NewRouter(),
-		LobbyManager: manager.NewLobbyManager(),
+		Lobbycore: core.NewLobbycore(),
 		DB: testDB, //this database is already mounted from main test setup
 	}
 	s.MountHandlers()

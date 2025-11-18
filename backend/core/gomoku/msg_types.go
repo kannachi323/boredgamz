@@ -1,15 +1,15 @@
 package gomoku
 
-import "boredgamz/manager"
+import "boredgamz/core"
 
 type GomokuLobbyRequest struct {
 	LobbyType string `json:"lobbyType"`
-	Player  *manager.Player `json:"player"`
+	Player  *core.Player `json:"player"`
 }
 
 type GomokuClientRequest struct {
-    Type string      `json:"type"`
-    Data *GomokuGameState `json:"data"`
+  Type string      `json:"type"`
+  Data *GomokuGameState `json:"data"`
 }
 
 type GomokuServerResponse struct {
@@ -20,5 +20,5 @@ type GomokuServerResponse struct {
 type GomokuMoveRequest struct {
     Row int `json:"row"`
     Col int `json:"col"`
-    Player *manager.Player `json:"player"`
+    Player *core.Player `json:"player"`
 }

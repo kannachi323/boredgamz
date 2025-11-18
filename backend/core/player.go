@@ -1,4 +1,4 @@
-package manager
+package core
 
 import (
 	"log"
@@ -73,13 +73,15 @@ func (player *Player) StartReader() {
 			if player.Disconnected.Load() { continue }
 			
 			_, msg, err := player.Conn.ReadMessage()
-			if err != nil {
-				player.Disconnected.Store(true)
-			} else {
-				player.Disconnected.Store(false)
-
-				player.Incoming <- msg
-			}
+            if err != nil {
+                player.Disconnected.Store(true)
+                return 
+            }
+			select {
+            case player.Incoming <- msg:
+            default:
+                log.Println("Player incoming channel full - dropping message")
+            }
 		}
 	}()
 }
@@ -90,20 +92,18 @@ func (player *Player) StartWriter() {
 			if player.Disconnected.Load() { continue }
 			
 			err := player.Conn.WriteMessage(websocket.TextMessage, msg)
-			
-			if err != nil {
-				player.Disconnected.Store(true)
-			} else {
-				player.Disconnected.Store(false)
-			}
-		}
+            
+            if err != nil {
+                player.Disconnected.Store(true)
+                return
+            }
+        }
 	}()
 }
 
 
 func (player *Player) StartClock() {
 	ticker := time.NewTicker(1 * time.Second)
-	log.Println("starting time: ", player.Clock.Remaining)
 
 	player.Clock.IsActive.Store(true)
 	lastTick := time.Now()

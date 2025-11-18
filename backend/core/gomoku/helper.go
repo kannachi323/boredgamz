@@ -1,8 +1,8 @@
 package gomoku
 
-import "boredgamz/manager"
+import "boredgamz/core"
 
-func GetPlayerByColor(gs *GomokuGameState, color string) *manager.Player {
+func GetPlayerByColor(gs *GomokuGameState, color string) *core.Player {
 	for _, player := range gs.Players {
 		if player.Color == color {
 			return player
@@ -11,7 +11,7 @@ func GetPlayerByColor(gs *GomokuGameState, color string) *manager.Player {
 	return nil
 }
 
-func GetOpponent(gs *GomokuGameState, playerID string) *manager.Player {
+func GetOpponent(gs *GomokuGameState, playerID string) *core.Player {
 	for _, player := range gs.Players {
 		if player.PlayerID != playerID {
 			return player
@@ -20,7 +20,7 @@ func GetOpponent(gs *GomokuGameState, playerID string) *manager.Player {
 	return nil
 }
 
-func GetPlayerByID(gs *GomokuGameState, playerID string) *manager.Player {
+func GetPlayerByID(gs *GomokuGameState, playerID string) *core.Player {
 	for _, player := range gs.Players {
 		if player.PlayerID == playerID {
 			return player

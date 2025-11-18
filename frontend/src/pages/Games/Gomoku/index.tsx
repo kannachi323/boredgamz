@@ -3,7 +3,7 @@ import { Outlet, RouteObject } from "react-router-dom";
 
 
 import { useAuthStore } from "../../../stores/useAuthStore";
-import { useGameStore } from "../../../stores/useGameStore";
+import { useGameStore } from "../../../stores/useGomokuStore";
 import { LoginRedirectModal } from "../../Login/LoginRedirectModal";
 import { GomokuLobby } from "./GomokuLobby";
 import GomokuGame from "./GomokuGame";

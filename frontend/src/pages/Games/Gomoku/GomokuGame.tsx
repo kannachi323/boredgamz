@@ -2,11 +2,11 @@ import { useEffect } from "react";
 
 import { Timer } from "../../../components/Timer"
 import { PlayerBanner } from "../../../components/Banner"
-import { GamePanel } from "./GamePanel"
-import { useGameStore } from "../../../stores/useGameStore";
+import { GamePanel } from "../../../components/GamePanel"
+import { useGameStore } from "../../../stores/useGomokuStore";
 import { Board } from "../../../features/Board"; 
 import { ChatBox } from "../../../features/Chat/ChatBox";
-import { GameModal } from "./GomokuModal";
+import { GameModal } from "./GomokuGameModal";
 
 /*TODO: need to implement game state saving after refresh (use database :)
 Matthew pls do this asap lol this is pretty important
@@ -53,7 +53,6 @@ export default function GomokuGame() {
 
 
       <GameModal />
-
     </div>
   )
 }

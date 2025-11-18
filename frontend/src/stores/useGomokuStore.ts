@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { ServerResponse, GameState, Player, ClientRequest, LobbyRequest } from '../types'
+import { ServerResponse, GameState, Player, ClientRequest, LobbyRequest } from '../pages/Games/Gomoku/GomokuTypes.tsx'
 import { convertTime } from '../utils.ts'
 
 interface GameStore {

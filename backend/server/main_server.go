@@ -2,8 +2,8 @@ package server
 
 import (
 	"boredgamz/api"
+	"boredgamz/core"
 	"boredgamz/db"
-	"boredgamz/manager"
 	"fmt"
 
 	"github.com/go-chi/chi/v5"
@@ -13,7 +13,7 @@ import (
 type Server struct {
 	Router       *chi.Mux
 	APIRouter    *chi.Mux
-	LobbyManager *manager.LobbyManager
+	Lobbycore *core.Lobbycore
 	DB	*db.Database
 }
 
@@ -21,7 +21,7 @@ type Server struct {
 func CreateServer() *Server {
 	s := &Server{
 		Router: chi.NewRouter(),
-		LobbyManager: manager.NewLobbyManager(),
+		Lobbycore: core.NewLobbycore(),
 		DB: &db.Database{},
 	}
 	s.Router.Route("/api", func(r chi.Router) {

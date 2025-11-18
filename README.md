@@ -39,7 +39,7 @@ This checklist tracks core progress on building and polishing the backend server
 ## 🚀 Nice-to-Haves (Future)
 
 - [ ] Add `"waiting"` message when one player is waiting in a room
-- [ ] Add reconnection support via `RoomManager.ReconnectPlayer`
+- [ ] Add reconnection support via `Roomcore.ReconnectPlayer`
 - [ ] Support spectator mode
 - [ ] Add per-move timers (e.g. 30 seconds per turn)
 

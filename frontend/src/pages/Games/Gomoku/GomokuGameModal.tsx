@@ -1,4 +1,4 @@
-import { useGameStore } from "../../../stores/useGameStore";
+import { useGameStore } from "../../../stores/useGomokuStore";
 
 export function GameModal() {
   const { gameState } = useGameStore();

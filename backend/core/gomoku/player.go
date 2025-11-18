@@ -1,11 +1,9 @@
 package gomoku
 
-import (
-	"boredgamz/manager"
-)
+import "boredgamz/core"
 
 type GomokuPlayer struct {
-	*manager.Player
+	*core.Player
 }
 
 

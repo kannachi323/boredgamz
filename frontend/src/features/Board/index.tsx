@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BoardStonePiece } from "./BoardStonePiece";
-import { useGameStore } from "../../stores/useGameStore";
+import { useGameStore } from "../../stores/useGomokuStore";
 import { sendMove } from "./board";
 
 export function Board() {
