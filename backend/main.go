@@ -1,8 +1,8 @@
 package main
 
 import (
+	"boredgamz/server"
 	"net/http"
-	"playgomoku/backend/server"
 
 	"github.com/joho/godotenv"
 )

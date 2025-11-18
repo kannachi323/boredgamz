@@ -1,8 +1,8 @@
 package server
 
 import (
-	"playgomoku/backend/api"
-	"playgomoku/backend/middleware"
+	"boredgamz/api"
+	"boredgamz/middleware"
 )
 
 func (s *Server) MountAuthHandlers() {

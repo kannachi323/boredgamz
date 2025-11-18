@@ -1,9 +1,9 @@
 package middleware
 
 import (
+	"boredgamz/utils"
 	"context"
 	"net/http"
-	"playgomoku/backend/utils"
 )
 
 type ContextKey string

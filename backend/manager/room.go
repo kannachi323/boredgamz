@@ -1,42 +1,53 @@
 package manager
 
-import (
-	"playgomoku/backend/game"
-	"sync"
-)
+import "sync"
 
 type RoomController interface {
+	//Room lifecycle methods
 	Start()
 	Close()
-	GetRoomID() string
-	GetPlayerByID() string
-	GetGameState() *game.GameState
-	GetPlayerChannels(playerID string) (incoming chan []byte, ouutgoing chan []byte)
-	ReconnectPlayer(newPlayer *game.Player) bool
-	RemovePlayer(playerID string) bool
+	Broadcast(res []byte)
+	Send(p *Player, res []byte)
+	HandleEvent(req []byte)
 }
 
 type Room struct {
-	RoomController
-
 	RoomID 	  string
-	Player1   *game.Player
-    Player2   *game.Player
-    Events    chan *ClientRequest
-    Timeout   chan string
-    GameID    string
-    GameState *game.GameState
-	mu 	  sync.RWMutex
+	Players	 	[]*Player
+	Events    chan []byte
+	Timeout   chan []byte
+	GameID    string
+	CloseOnce sync.Once
 }
 
 type RoomManager struct { 
-	PlayerRoomMap map[string]*Room
+	PlayerRoomMap map[string]RoomController
+	mu	sync.RWMutex
 }
 
-func (rm *RoomManager) StartRoom(r *Room) {
-	r.Start() 
+func NewRoomManager() *RoomManager {
+	return &RoomManager{
+		PlayerRoomMap: make(map[string]RoomController),
+	}
 }
 
-func (rm *RoomManager) CloseRoom(r Room) {
-	r.Close()
+func (rm *RoomManager) RegisterPlayerToRoom(playerID string, room RoomController) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	rm.PlayerRoomMap[playerID] = room
+}
+
+func (rm *RoomManager) RemovePlayerFromRoom(playerID string) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+
+	delete(rm.PlayerRoomMap, playerID)
+}
+
+func (rm *RoomManager) GetPlayerRoom(playerID string) (RoomController, bool) {
+	rm.mu.RLock()
+	defer rm.mu.RUnlock()
+	room, ok := rm.PlayerRoomMap[playerID]
+	return room, ok
 }

@@ -1,16 +1,17 @@
 package api
 
 import (
+	"boredgamz/manager"
+	"boredgamz/manager/gomoku"
+	"boredgamz/utils"
 	"encoding/json"
 	"log"
 	"net/http"
-	"playgomoku/backend/game"
-	"playgomoku/backend/manager"
-	"playgomoku/backend/utils"
 )
 
 func JoinGomokuLobby(lm *manager.LobbyManager) http.HandlerFunc {
 	 return func(w http.ResponseWriter, r *http.Request) {
+        log.Println("New join gomoku lobby request")
         if r.Header.Get("Connection") != "Upgrade" && r.Header.Get("Upgrade") != "websocket" {
 			http.Error(w, "Expected WebSocket upgrade", http.StatusUpgradeRequired)
 			return
@@ -28,40 +29,40 @@ func JoinGomokuLobby(lm *manager.LobbyManager) http.HandlerFunc {
             return
         }
 
-        var reqBody manager.LobbyRequest
+        var reqBody gomoku.GomokuLobbyRequest
         if err := json.Unmarshal(msg, &reqBody); err != nil {
             log.Println("Invalid join message format:", err)
             return
         }
+        log.Println(lm.Lobbies)
+        gomokuLobby, ok := lm.GetLobby(reqBody.LobbyType)
+		if !ok {
+			log.Println("Lobby not found:", reqBody.LobbyType)
+			return
+		}
+        player := manager.NewPlayer(
+            reqBody.Player.PlayerID,
+            reqBody.Player.PlayerName, 
+            reqBody.Player.Color,
+            reqBody.Player.Clock,
+            conn,
+        )
+        gomokuLobby.AddPlayer(player)
+		players, matched := gomokuLobby.MatchPlayers()
+		
+        if !matched { return }
 
-        lobbyType := reqBody.LobbyType
-        lobby, _:= lm.GetLobby(lobbyType)
+        p1 := players[0]
+		p2 := players[1]
 
-        player := &game.Player{
-            PlayerID:      reqBody.Player.PlayerID,
-            PlayerName:    reqBody.Player.PlayerName,
-            Color:         reqBody.Player.Color,
-            Clock:      reqBody.Player.Clock,
-            Conn:     conn,
-            Incoming: make(chan []byte, 10),
-            Outgoing: make(chan []byte, 10),
-        }
 
-        lm.AddPlayerToQueue(lobby, player)
-        players, success := lm.MatchPlayers(lobby)
+        room := gomoku.NewGomokuRoom(p1, p2, reqBody.LobbyType)
+        room.Start()
         
-        if success {
-            rm := lobby.RoomManager
-
-		    room := rm.CreateNewRoom(players[0], players[1], lobby.LobbyType)
-
-            rm.Broadcast(room, &manager.ServerResponse{
-                Type: "update",
-                Data: room.GameState,
-            })
-            rm.StartRoom(room)
-        }
+        room.Broadcast(&gomoku.GomokuServerResponse{
+            Type: "update",
+            Data: room.GameState,
+        })
+       
     }
 }
-
-func CreateGomokuGame(lm *manager.LobbyManager)

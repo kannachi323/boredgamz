@@ -1,28 +1,30 @@
-package game
+package gomoku
 
 import (
+	"boredgamz/manager"
 	"fmt"
 
 	"github.com/google/uuid"
 )
 
-type GameState struct {
+type GomokuGameStatus struct {
+	Result string `json:"result"`
+	Code string `json:"code"`
+	Winner *manager.Player `json:"winner,omitempty"`
+}
+
+type GomokuGameState struct {
 	GameID   string      `json:"gameID"`
 	Board    *Board      `json:"board"`
-	Players  []*Player   `json:"players"`
-	Status   *GameStatus `json:"status"`
+	Players  []*manager.Player   `json:"players"`
+	Status   *GomokuGameStatus `json:"status"`
 	LastMove *Move       `json:"lastMove"`
 	Turn     string      `json:"turn"`
 	Timeout  chan struct{} `json:"-"`
 }
 
-type GameStatus struct {
-	Result string `json:"result"`
-	Code string `json:"code"`
-	Winner *Player `json:"winner,omitempty"`
-}
 
-func CreateGameState(size int, p1 *Player, p2 *Player) *GameState {
+func NewGomokuGameState(gomokuType string, p1 *manager.Player, p2 *manager.Player) *GomokuGameState {
 	var turn string
 	if p1.Color == "black" {
 		turn = p1.PlayerID
@@ -30,11 +32,23 @@ func CreateGameState(size int, p1 *Player, p2 *Player) *GameState {
 		turn = p2.PlayerID
 	}
 
-	newGameState := &GameState{
+	var size int
+	switch gomokuType {
+	case "19x19":
+		size = 19
+	case "15x15":
+		size = 15
+	case "9x9":
+		size = 9
+	default:
+		size = 9
+	}
+
+	newGameState := &GomokuGameState{
 		GameID:  uuid.New().String(),
 		Board:   NewEmptyBoard(size),
-		Players: NewPlayers(p1, p2),
-		Status: &GameStatus{
+		Players: []*manager.Player{p1, p2},
+		Status: &GomokuGameStatus{
 			Result: "",
 			Code: "online",
 			Winner: nil,
@@ -48,7 +62,7 @@ func CreateGameState(size int, p1 *Player, p2 *Player) *GameState {
 /*
 Only UpdateGameState should be called by room handler
 */
-func UpdateGameState(serverGameState *GameState, clientGameState *GameState) {
+func UpdateGameState(serverGameState *GomokuGameState, clientGameState *GomokuGameState) {
 	
 	err := UpdateLastMove(serverGameState, clientGameState.LastMove)
 	if err != nil { return }
@@ -73,7 +87,7 @@ func UpdateGameState(serverGameState *GameState, clientGameState *GameState) {
 /*
 Private handlers for updating game state
 */
-func UpdatePlayerTurn(serverGameState *GameState) {
+func UpdatePlayerTurn(serverGameState *GomokuGameState) {
 	switch serverGameState.Turn {
 		case serverGameState.Players[0].PlayerID:
 			serverGameState.Turn = serverGameState.Players[1].PlayerID
@@ -81,7 +95,7 @@ func UpdatePlayerTurn(serverGameState *GameState) {
 			serverGameState.Turn = serverGameState.Players[0].PlayerID
 	}
 }
-func UpdateLastMove(serverGameState *GameState, move *Move) error {
+func UpdateLastMove(serverGameState *GomokuGameState, move *Move) error {
 
 	expectedColor := "black"
 	if serverGameState.LastMove != nil {
@@ -100,31 +114,31 @@ func UpdateLastMove(serverGameState *GameState, move *Move) error {
 	return nil
 }
 
-func UpdateGameStatus(gs *GameState, statusType string, playerID string) {
+func UpdateGameStatus(gs *GomokuGameState, statusType string, playerID string) {
 	switch statusType {
 	case "win":
-		gs.Status = &GameStatus{
+		gs.Status = &GomokuGameStatus{
 			Result: "win",
 			Code:   "offline",
 			Winner: GetPlayerByID(gs, playerID),
 		}
 	case "draw":
-		gs.Status = &GameStatus{
+		gs.Status = &GomokuGameStatus{
 			Result: "draw",
 			Code:   "offline",
 		}
 	case "timeout":
-		gs.Status = &GameStatus{
+		gs.Status = &GomokuGameStatus{
 			Result: "win",
 			Code:   "offline",
-			Winner: GetOpponentPlayerByColor(gs, GetPlayerByID(gs, playerID).Color),
+			Winner: GetOpponent(gs, GetPlayerByID(gs, playerID).Color),
 		}
 	}
 }
 
-func UpdatePlayerClocks(serverGameState *GameState) {
+func UpdatePlayerClocks(serverGameState *GomokuGameState) {
 	currentPlayer := GetPlayerByColor(serverGameState, serverGameState.LastMove.Color)
-	opponentPlayer := GetOpponentPlayerByColor(serverGameState, serverGameState.LastMove.Color)
+	opponentPlayer := GetOpponent(serverGameState, serverGameState.LastMove.Color)
 
 	currentPlayer.StopClock()
 	opponentPlayer.StartClock()

@@ -1,20 +1,20 @@
 package gomoku
 
 import (
+	"boredgamz/manager"
 	"container/list"
 	"fmt"
 	"log"
-	"playgomoku/backend/game"
-	"playgomoku/backend/manager"
 	"sync"
 )
 
 type GomokuLobby struct {
-	manager.LobbyController
-	
-	manager.Lobby
-	manager.LobbyManager
-
+	*manager.Lobby
+	GomokuType string
+	WhiteQueue *list.List
+	BlackQueue *list.List
+	PlayerMap  map[*manager.Player]*GomokuLobbySlot
+	mu sync.RWMutex
 }
 
 type GomokuLobbySlot struct {
@@ -22,41 +22,24 @@ type GomokuLobbySlot struct {
 	Queue *list.List
 }
 
-type GomokuLobbyManager struct {
-	lobbies map[string]*GomokuLobby
-	mu sync.RWMutex
-}
-
-
-func (lm *GomokuLobbyManager) GetLobby(lobbyType string) (*GomokuLobby, bool) {
-	lm.mu.Lock()
-	defer lm.mu.Unlock()
-
-	lobby, ok := lm.lobbies[lobbyType]
-	return lobby, ok
-}
-
-func (lm *GomokuLobbyManager) CreateLobby(maxPlayers int, lobbyType string) *GomokuLobby {
-	lm.mu.Lock()
-	defer lm.mu.Unlock()
-
-	lobby := &Lobby{
+func NewGomokuLobby(maxPlayers int, gomokuType string) manager.LobbyController {
+	gomokuLobby := &GomokuLobby{
+		Lobby: &manager.Lobby{
+			NumPlayers: 0,
+			MaxPlayers: maxPlayers,
+			RoomManager: nil,
+		},
+		GomokuType: gomokuType,
 		WhiteQueue: list.New(),
 		BlackQueue: list.New(),
-		PlayerMap: make(map[*game.Player]*GomokuLobbySlot),
-		NumPlayers: 0,
-		MaxPlayers: maxPlayers,
-		LobbyType: lobbyType,
-		RoomManager: CreateRoomManager(),
+		PlayerMap: make(map[*manager.Player]*GomokuLobbySlot),
 	}
-	lm.lobbies[lobbyType] = lobby
-
-	return lobby
+	return gomokuLobby
 }
 
-func (lm* GomokuLobbyManager) AddPlayerToQueue(lobby *GomokuLobby, player *game.Player) {
-	lm.mu.Lock()
-	defer lm.mu.Unlock()
+func (lobby *GomokuLobby) AddPlayer(player *manager.Player) {
+	lobby.mu.Lock()
+	defer lobby.mu.Unlock()
 
 	if lobby.NumPlayers >= lobby.MaxPlayers { return }
 	if _, exists := lobby.PlayerMap[player]; exists { return }
@@ -75,16 +58,16 @@ func (lm* GomokuLobbyManager) AddPlayerToQueue(lobby *GomokuLobby, player *game.
 	default:
 		return
 	}
-	lobby.PlayerMap[player] = &LobbySlot{
+	lobby.PlayerMap[player] = &GomokuLobbySlot{
 		Element: elem,
 		Queue: queue,
 	}
 	lobby.NumPlayers++
 }
 
-func (lm* GomokuLobbyManager) RemovePlayerFromQueue(lobby *GomokuLobby, player *game.Player) {
-	lm.mu.Lock()
-	defer lm.mu.Unlock()
+func (lobby *GomokuLobby) RemovePlayer(player *manager.Player) {
+	lobby.mu.Lock()
+	defer lobby.mu.Unlock()
 
 	slot, ok := lobby.PlayerMap[player]
 	if !ok { return }
@@ -94,21 +77,20 @@ func (lm* GomokuLobbyManager) RemovePlayerFromQueue(lobby *GomokuLobby, player *
 	lobby.NumPlayers--
 }
 
-func (lm* GomokuLobbyManager) MatchPlayers(lobby *GomokuLobby) ([]*game.Player, bool) {
+func (lobby *GomokuLobby) MatchPlayers() ([]*manager.Player, bool) {
 	if lobby.WhiteQueue.Len() == 0 || lobby.BlackQueue.Len() == 0 { return nil, false }
 
 	e1 := lobby.WhiteQueue.Front()
 	e2 := lobby.BlackQueue.Front()
-	playerWhite := e1.Value.(*game.Player)
-	playerBlack := e2.Value.(*game.Player)
+	playerWhite := e1.Value.(*manager.Player)
+	playerBlack := e2.Value.(*manager.Player)
 
-	lm.RemovePlayerFromQueue(lobby, playerWhite)
-	lm.RemovePlayerFromQueue(lobby, playerBlack)
+	lobby.RemovePlayer(playerWhite)
+	lobby.RemovePlayer(playerBlack)
 
 	if (playerWhite.PlayerID == playerBlack.PlayerID) { return nil, false }
 
 	fmt.Println("Matched players:", playerWhite.PlayerID, playerBlack.PlayerID)
 
-	return []*game.Player{playerWhite, playerBlack}, true
+	return []*manager.Player{playerWhite, playerBlack}, true
 }
-

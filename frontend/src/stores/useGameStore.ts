@@ -57,10 +57,9 @@ export const useGameStore = create<GameStore>((set) => ({
 
 
 function join(lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) : WebSocket {
-  const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/join-lobby`);
+  const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/join-gomoku-lobby`);
 
   socket.onopen = () => {
-    console.log(player)
     const lobbyReq : LobbyRequest = {
       lobbyType: lobbyType,
       player: player,

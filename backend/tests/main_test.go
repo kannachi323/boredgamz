@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"playgomoku/backend/api"
-	"playgomoku/backend/db"
-	"playgomoku/backend/manager"
-	"playgomoku/backend/middleware"
-	"playgomoku/backend/server"
-	"playgomoku/backend/utils"
+	"boredgamz/api"
+	"boredgamz/db"
+	"boredgamz/manager"
+	"boredgamz/middleware"
+	"boredgamz/server"
+	"boredgamz/utils"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"

@@ -1,10 +1,10 @@
 package server
 
 import (
+	"boredgamz/api"
+	"boredgamz/db"
+	"boredgamz/manager"
 	"fmt"
-	"playgomoku/backend/api"
-	"playgomoku/backend/db"
-	"playgomoku/backend/manager"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
@@ -29,28 +29,25 @@ func CreateServer() *Server {
 	})
 
 	s.MountDatabase()
-	s.MountResources()
 	s.MountHandlers()
-
+	s.MountLobbies()
 
 	return s
 }
 
 func (s *Server) MountDatabase() {
 	err := s.DB.Start()
-	
 	if err != nil {
 		fmt.Print("could not mount database: ", err)
 	}
-
 }
 
-func (s *Server) MountResources() {
+func (s* Server) MountLobbies() {
+	//IMPORTANT: Do not remove this lobby registration
+	s.MountGomokuLobbies()
 	
-	// create all the lobbies
-	s.LobbyManager.CreateLobby(100, "9x9")
-
 }
+
 
 func (s *Server) MountHandlers() {
 	s.APIRouter.Use(cors.Handler(cors.Options{
@@ -66,9 +63,7 @@ func (s *Server) MountHandlers() {
 	s.APIRouter.Get("/hello", api.HelloWorld())
 	
 	s.MountAuthHandlers()
-	s.MountLobbyHandlers()
-
-	
+	s.MountGomokuHandlers()
 }
 
 

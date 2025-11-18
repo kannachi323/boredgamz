@@ -27,7 +27,6 @@ function Gomoku() {
 
   if (!isAuthenticated) return <LoginRedirectModal />
 
-  console.log(player)
   return <Outlet />
 
 }

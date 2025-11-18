@@ -1,12 +1,12 @@
 package api
 
 import (
+	"boredgamz/db"
+	"boredgamz/middleware"
+	"boredgamz/utils"
 	"encoding/json"
 	"log"
 	"net/http"
-	"playgomoku/backend/db"
-	"playgomoku/backend/middleware"
-	"playgomoku/backend/utils"
 	"strings"
 )
 
