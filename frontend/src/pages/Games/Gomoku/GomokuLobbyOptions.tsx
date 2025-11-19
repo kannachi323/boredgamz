@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import { useGameStore } from "../../../stores/useGomokuStore.ts";
 import { convertTime } from '../../../utils.ts'
+import BLACK from '../../../assets/black.svg'
+import WHITE from '../../../assets/white.svg'
 
 
 export function LobbyOptionsPanel() {
@@ -42,14 +44,14 @@ export function LobbyOptionsPanel() {
       <div className="flex flex-row items-center justify-evenly gap-2">
         <p className="text-2xl">Color:</p>
         <img
-          src="/white.svg"
+          src={WHITE}
           alt="preview stone"
           className={`h-14 w-14 rounded-full cursor-pointer border-2 transition-all duration-300
             ${colorSelected === "white" && " border-green-300"}`}
           onClick={() => handleColorSelect("white")}
         />
         <img
-          src={`/black.svg`}
+          src={BLACK}
           alt={`preview stone`}
           className={`h-14 w-14 rounded-full cursor-pointer border-2 transition-all duration-300
             ${colorSelected === "black" && " border-green-300"}`}

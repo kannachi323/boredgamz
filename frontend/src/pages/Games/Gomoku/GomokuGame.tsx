@@ -4,7 +4,7 @@ import { Timer } from "../../../components/Timer"
 import { PlayerBanner } from "../../../components/Banner"
 import { GamePanel } from "../../../components/GamePanel"
 import { useGameStore } from "../../../stores/useGomokuStore";
-import { Board } from "../../../features/Board"; 
+import { GomokuBoard } from "./GomokuBoard";
 import { ChatBox } from "../../../features/Chat/ChatBox";
 import { GameModal } from "./GomokuGameModal";
 
@@ -44,7 +44,7 @@ export default function GomokuGame() {
       </div>
 
       <div className="col-span-12 row-span-1">
-        <Board/>
+        <GomokuBoard/>
       </div>
 
       <div className="col-span-7 row-span-1">

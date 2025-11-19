@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { BoardStonePiece } from "./BoardStonePiece";
-import { useGameStore } from "../../stores/useGomokuStore";
-import { sendMove } from "./board";
-
-export function Board() {
+import { GomokuStone } from "./GomokuStone";
+import { useGameStore } from "../../../stores/useGomokuStore"
+import { sendMove } from "./helper";
+import SMALL_BOARD from "../../../assets/small-board.jpg"
+export function GomokuBoard() {
   const { gameState } = useGameStore();
 
   const [hoveredIndex, setHoveredIndex] = useState<[number, number] | null>(null);
@@ -14,7 +14,7 @@ export function Board() {
 
   return (
     <div className="flex justify-center h-full w-full relative">
-      <img src="/small-board.jpg" alt="gomoku board" className="absolute h-full w-full z-0" />
+      <img src={SMALL_BOARD} alt="gomoku board" className="absolute h-full w-full z-0" />
       <div className="absolute h-full w-full grid grid-cols-9 grid-rows-9 z-10 p-4">
         {gameState.board.stones.flatMap((row, rowIdx) => 
           row.map((stone, colIdx) => (
@@ -25,7 +25,7 @@ export function Board() {
               onMouseEnter={() => setHoveredIndex([rowIdx, colIdx])}
               onMouseLeave={() => setHoveredIndex(null)}
             >
-              <BoardStonePiece
+              <GomokuStone
                 stone={stone}
                 isHovered={
                   hoveredIndex &&

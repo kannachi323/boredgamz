@@ -4,6 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { useGameStore } from "../../../stores/useGomokuStore";
 import { LobbyOptionsPanel } from "./GomokuLobbyOptions";
 
+import SMALL_BOARD from '../../../assets/small-board.jpg'
+import MID_BOARD from '../../../assets/mid-board.jpg'
+import LARGE_BOARD from '../../../assets/large-board.jpg'
+
 export function GomokuLobby() {
   const { setConnection, player, handler, gameState } = useGameStore();
   const navigate = useNavigate();
@@ -27,18 +31,18 @@ export function GomokuLobby() {
           onClick={() => setConnection("9x9", player, handler)}
         >
           <p className="text-5xl">9x9</p>
-          <img src="/small-board.jpg" alt="gomoku board" className="w-full h-auto" />
+          <img src={SMALL_BOARD} alt="gomoku board" className="w-full h-auto" />
         </div>
 
         <div className="bg-[#302e2e] w-1/3 p-5 flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-[#1b1918]
           hover:bg-[#524b4b] transition-colors duration-300 cursor-pointer">
           <p className="text-5xl">13x13</p>
-          <img src="/mid-board.jpg" alt="gomoku board" className="w-full h-auto" />
+          <img src={MID_BOARD} alt="gomoku board" className="w-full h-auto" />
         </div>
         <div className="bg-[#302e2e] w-1/3 p-5 flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-[#1b1918]
           hover:bg-[#524b4b] transition-colors duration-300 cursor-pointer">
           <p className="text-5xl">19x19</p>
-          <img src="/large-board.jpg" alt="gomoku board" className="w-full h-auto" />
+          <img src={LARGE_BOARD} alt="gomoku board" className="w-full h-auto" />
         </div>
       </div>
       <div>

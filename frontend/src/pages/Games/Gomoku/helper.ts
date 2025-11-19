@@ -1,5 +1,5 @@
-import { useGameStore } from "../../stores/useGomokuStore"
-import { ClientRequest,   } from "../../pages/Games/Gomoku/GomokuTypes"
+import { useGameStore } from "../../../stores/useGomokuStore"
+import { ClientRequest } from "./GomokuTypes"
 
 export function sendMove(row: number, col: number) {
   const { sendClientRequest, gameState, player, conn} = useGameStore.getState();
