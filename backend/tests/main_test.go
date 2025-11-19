@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"playgomoku/backend/api"
-	"playgomoku/backend/db"
-	"playgomoku/backend/manager"
-	"playgomoku/backend/middleware"
-	"playgomoku/backend/server"
-	"playgomoku/backend/utils"
+	"boredgamz/api"
+	"boredgamz/core"
+	"boredgamz/db"
+	"boredgamz/middleware"
+	"boredgamz/server"
+	"boredgamz/utils"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
@@ -75,7 +75,7 @@ func ResetTestDB(testDB *db.Database) error {
 func CreateTestServer() *server.Server {
 	s := &server.Server{
 		Router: chi.NewRouter(),
-		LobbyManager: manager.NewLobbyManager(),
+		Lobbycore: core.NewLobbycore(),
 		DB: testDB, //this database is already mounted from main test setup
 	}
 	s.MountHandlers()

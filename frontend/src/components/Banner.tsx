@@ -1,5 +1,5 @@
 
-import { Player } from "../types";
+import { Player } from "../pages/Games/Gomoku/GomokuTypes";
 
 
 interface Props {

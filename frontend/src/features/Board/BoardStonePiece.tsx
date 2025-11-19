@@ -1,4 +1,4 @@
-import { Stone } from "../../types";
+import { Stone } from "../../pages/Games/Gomoku/GomokuTypes";
 
 export function BoardStonePiece({ stone, isHovered }: { stone: Stone; isHovered: boolean | null}) {
   if (stone.color) {

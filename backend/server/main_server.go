@@ -1,11 +1,10 @@
 package server
 
 import (
+	"boredgamz/api"
+	"boredgamz/core"
+	"boredgamz/db"
 	"fmt"
-	"playgomoku/backend/api"
-	"playgomoku/backend/db"
-	"playgomoku/backend/manager"
-	"playgomoku/backend/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
@@ -14,7 +13,7 @@ import (
 type Server struct {
 	Router       *chi.Mux
 	APIRouter    *chi.Mux
-	LobbyManager *manager.LobbyManager
+	Lobbycore *core.Lobbycore
 	DB	*db.Database
 }
 
@@ -22,7 +21,7 @@ type Server struct {
 func CreateServer() *Server {
 	s := &Server{
 		Router: chi.NewRouter(),
-		LobbyManager: manager.NewLobbyManager(),
+		Lobbycore: core.NewLobbycore(),
 		DB: &db.Database{},
 	}
 	s.Router.Route("/api", func(r chi.Router) {
@@ -30,28 +29,25 @@ func CreateServer() *Server {
 	})
 
 	s.MountDatabase()
-	s.MountResources()
 	s.MountHandlers()
-
+	s.MountLobbies()
 
 	return s
 }
 
 func (s *Server) MountDatabase() {
 	err := s.DB.Start()
-	
 	if err != nil {
 		fmt.Print("could not mount database: ", err)
 	}
-
 }
 
-func (s *Server) MountResources() {
+func (s* Server) MountLobbies() {
+	//IMPORTANT: Do not remove this lobby registration
+	s.MountGomokuLobbies()
 	
-	// create all the lobbies
-	s.LobbyManager.CreateLobby(100, "9x9")
-
 }
+
 
 func (s *Server) MountHandlers() {
 	s.APIRouter.Use(cors.Handler(cors.Options{
@@ -63,17 +59,11 @@ func (s *Server) MountHandlers() {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 	
-
-	s.APIRouter.With(middleware.AuthMiddleware).Get("/join-lobby", api.JoinLobby(s.LobbyManager))
-	
-	s.APIRouter.Post("/signup", api.SignUp(s.DB))
-	s.APIRouter.Post("/login", api.LogIn(s.DB))
-	s.APIRouter.With(middleware.AuthMiddleware).Get("/logout", api.LogOut())
-	s.APIRouter.With(middleware.AuthMiddleware).Get("/check-auth", api.CheckAuth(s.DB))
-	s.APIRouter.Get("/refresh", api.RefreshAuth(s.DB))
-
-
+	//DO NOT REMOVE THIS
 	s.APIRouter.Get("/hello", api.HelloWorld())
+	
+	s.MountAuthHandlers()
+	s.MountGomokuHandlers()
 }
 
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Player } from "../types";
-import { useGameStore } from "../stores/useGameStore";
+import { Player } from "../pages/Games/Gomoku/GomokuTypes";
+import { useGameStore } from "../stores/useGomokuStore";
 
 export function Timer({ player }: { player: Player }) {
   const { gameState } = useGameStore();

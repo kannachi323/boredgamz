@@ -1,4 +1,4 @@
-package game
+package core
 
 import (
 	"log"
@@ -9,6 +9,16 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type PlayerController interface {
+	//Player lifecycle methods
+	StartPlayer()
+	ClosePlayer()
+	StartReader()
+	StartWriter()
+	StartClock()
+	StopClock()
+
+}
 
 type Player struct {
 	PlayerID       string `json:"playerID"`
@@ -19,44 +29,59 @@ type Player struct {
 	Incoming chan []byte `json:"-"`
 	Outgoing chan []byte `json:"-"`
 	Disconnected atomic.Bool `json:"-"`
-	closeOnce sync.Once `json:"-"`
+	CloseOnce sync.Once `json:"-"`
 }
 
 type PlayerClock struct {
 	Remaining time.Duration `json:"remaining"`
 	IsActive atomic.Bool `json:"-"`
-	Timeout chan string `json:"-"`
+	Timeout chan []byte `json:"-"`
 }
 
-func NewPlayers(p1 *Player, p2 *Player) []*Player {
-	newPlayers := make([]*Player, 2)
-	newPlayers[0] = p1
-	newPlayers[1] = p2
-
-	return newPlayers
-}
-
-func (player* Player) StartPlayer() {
-	player.StartReader()
-	player.StartWriter()
-	if player.Color == "black" {
-		player.StartClock()
+func NewPlayer(playerID, playerName, color string, clock *PlayerClock, conn *websocket.Conn) *Player{
+	return &Player{
+		PlayerID:      playerID,
+		PlayerName:    playerName,
+		Color:         color,
+		Clock:      clock,
+		Conn:     conn,
+		Incoming: make(chan []byte, 10),
+		Outgoing: make(chan []byte, 10),
+		Disconnected: atomic.Bool{},
+		CloseOnce: sync.Once{},
 	}
 }
+
+
+func (player *Player) StartPlayer() {
+	player.StartReader()
+	player.StartWriter()
+}
+
+func (player *Player) ClosePlayer() {
+	player.CloseOnce.Do(func() {
+		close(player.Incoming)
+		close(player.Outgoing)
+		player.Conn.Close()
+	})
+}
+
 
 func (player *Player) StartReader() {
 	go func() {
 		for {
 			if player.Disconnected.Load() { continue }
-
+			
 			_, msg, err := player.Conn.ReadMessage()
-			if err != nil {
-				player.Disconnected.Store(true)
-
-			} else {
-				player.Disconnected.Store(false)
-				player.Incoming <- msg
-			}
+            if err != nil {
+                player.Disconnected.Store(true)
+                return 
+            }
+			select {
+            case player.Incoming <- msg:
+            default:
+                log.Println("Player incoming channel full - dropping message")
+            }
 		}
 	}()
 }
@@ -65,20 +90,20 @@ func (player *Player) StartWriter() {
 	go func() {
 		for msg := range player.Outgoing {
 			if player.Disconnected.Load() { continue }
+			
 			err := player.Conn.WriteMessage(websocket.TextMessage, msg)
-			if err != nil {
-				player.Disconnected.Store(true)
-			} else {
-				player.Disconnected.Store(false)
-			}
-		}
+            
+            if err != nil {
+                player.Disconnected.Store(true)
+                return
+            }
+        }
 	}()
 }
 
 
 func (player *Player) StartClock() {
 	ticker := time.NewTicker(1 * time.Second)
-	log.Println("starting time: ", player.Clock.Remaining)
 
 	player.Clock.IsActive.Store(true)
 	lastTick := time.Now()
@@ -97,7 +122,7 @@ func (player *Player) StartClock() {
 			if player.Clock.Remaining <= 0 {
 				player.StopClock()
 				select {
-					case player.Clock.Timeout <- player.PlayerID:
+					case player.Clock.Timeout <- []byte(player.PlayerID):
 					default:
 				}
 				return
@@ -110,31 +135,5 @@ func (player *Player) StopClock() {
 	player.Clock.IsActive.Store(false)
 }
 
-func (player *Player) ClosePlayer() {
-	player.closeOnce.Do(func() {
-		close(player.Incoming)
-		close(player.Outgoing)
-		player.Conn.Close()
-	})
-}
 
-func GetPlayerByColor(gameState *GameState, color string) *Player {
-	if gameState.Players[0].Color == color {
-		return gameState.Players[0]
-	}
-	return gameState.Players[1]
-}
 
-func GetPlayerByID(gameState *GameState, playerID string) *Player {
-	if gameState.Players[0].PlayerID == playerID {
-		return gameState.Players[0]
-	}
-	return gameState.Players[1]
-}
-
-func GetOpponentPlayerByColor(gameState *GameState, color string) *Player {
-	if gameState.Players[0].Color != color {
-		return gameState.Players[0]
-	}
-	return gameState.Players[1]
-}

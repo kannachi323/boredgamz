@@ -11,6 +11,8 @@ import Community from './pages/Community';
 
 //GAME ROUTES
 import GomokuRoutes from './pages/Games/Gomoku';
+import TicTacToeRoutes from './pages/Games/TicTacToe';
+import ConnectFourRoutes from './pages/Games/ConnectFour';
 
 const router = createBrowserRouter([
   {
@@ -24,6 +26,8 @@ const router = createBrowserRouter([
       {path: '/login', element: <Login />},
 
       GomokuRoutes(),
+      TicTacToeRoutes(),
+      ConnectFourRoutes(),
     ],
   },
 ]);

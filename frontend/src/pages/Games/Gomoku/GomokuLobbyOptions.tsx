@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { useGameStore } from "../../../stores/useGameStore.ts";
+import { useGameStore } from "../../../stores/useGomokuStore.ts";
 import { convertTime } from '../../../utils.ts'
 
 

@@ -1,4 +1,4 @@
-module playgomoku/backend
+module boredgamz
 
 go 1.23.0
 

@@ -16,9 +16,9 @@ export function Dropdown({ className, items, label, url }: Props) {
       onMouseEnter={() => setShowItems(true)}
       onMouseLeave={() => setShowItems(false)}
     >
-      <a href={url} className="text-white cursor-pointer p-5">{label}</a>
+      <a href={url} className="cursor-pointer p-5">{label}</a>
       {showItems && items && items.length > 0 && (
-        <div className="absolute left-0 top-1/2 mt-5 w-32 bg-[#33312d] border-[#7f7c7b] border-1 rounded-lg z-10 shadow-md p-1"
+        <div className="absolute left-0 top-1/2 mt-5 w-32 bg-[#33312d] border-[#7f7c7b] border-1 rounded-lg z-50 shadow-md p-1"
           onClick={() => setShowItems(false)}
         >
           {items.map((item, index) => (
