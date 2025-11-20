@@ -21,6 +21,7 @@ type GomokuGameState struct {
 	LastMove *Move       `json:"lastMove"`
 	Turn     string      `json:"turn"`
 	Timeout  chan struct{} `json:"-"`
+	Moves	[]*Move     `json:"moves"`
 }
 
 
@@ -57,6 +58,7 @@ func NewGomokuGame(gomokuType string, p1 *core.Player, p2 *core.Player) *GomokuG
 		},
 		LastMove: nil,
 		Turn: turn,
+		Moves: make([]*Move, 0),
 	}
 
 	return newGameState
@@ -72,8 +74,9 @@ func HandleGomokuMove(serverGameState *GomokuGameState, row int, col int, color 
 
     err := UpdateLastMove(serverGameState, move)
 	if err != nil { return }
-    
 
+	UpdateMoves(serverGameState, move)
+    
     if IsGomoku(serverGameState.Board.Stones, move) {
         UpdateGameStatus(serverGameState, "win", serverGameState.Turn)
     } else if IsDraw(serverGameState.Board) {
@@ -112,6 +115,10 @@ func UpdateLastMove(serverGameState *GomokuGameState, move *Move) error {
 	serverGameState.LastMove = move
 
 	return nil
+}
+
+func UpdateMoves(serverGameState *GomokuGameState, move *Move) {
+	serverGameState.Moves = append(serverGameState.Moves, move)
 }
 
 func UpdateGameStatus(gs *GomokuGameState, statusType string, playerID string) {

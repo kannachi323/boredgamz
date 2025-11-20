@@ -1,58 +1,64 @@
 import { useEffect } from "react";
 
-import { Timer } from "../../../components/Timer"
-import { PlayerBanner } from "../../../components/Banner"
-import { GamePanel } from "../../../components/GamePanel"
+import { PlayerBanner } from "../../../components/Banner";
+import { GamePanel } from "../../../components/GamePanel";
 import { useGomokuStore } from "../../../stores/useGomokuStore";
 import { GomokuBoard } from "./GomokuBoard";
 import { ChatBox } from "../../../features/Chat/ChatBox";
 import { GameModal } from "./GomokuGameModal";
-
-/*TODO: need to implement game state saving after refresh (use database :)
-Matthew pls do this asap lol this is pretty important
-*/
-
+import { Timer } from "../../../components/Timer";
 
 export default function GomokuGame() {
   const { gameState, setPlayer, setOpponent, player, opponent } = useGomokuStore();
 
   useEffect(() => {
-    //This effect adds the player clocks from server
-    if (!player || !gameState) return
-    const p1 = gameState.players[0]
-    const p2 = gameState.players[1]
-    setPlayer(p1.playerID == player.playerID ? p1 : p2)
-    setOpponent( p1.playerID == player.playerID ? p2 : p1)
-  }, [gameState])
+    if (!player || !gameState) return;
+
+    const p1 = gameState.players[0];
+    const p2 = gameState.players[1];
+
+    setPlayer(p1.playerID === player.playerID ? p1 : p2);
+    setOpponent(p1.playerID === player.playerID ? p2 : p1);
+  }, [gameState]);
 
   return (
-    <div className="w-full h-[90vh] grid grid-cols-26 grid-rows-1 gap-10 p-10">
-      <div className="col-span-7 row-span-1 flex flex-col justify-center gap-10">
-        
-        <div className="w-full h-1/2 flex flex-col items-center justify-center gap-2">
-          <PlayerBanner player={opponent}/>
-          <Timer player={opponent}/>
+    <div className="h-[90vh] w-full grid grid-cols-26 gap-6 p-6 bg-[#1b1918] overflow-hidden">
+
+      {/* LEFT PANEL */}
+      <section className="col-span-7 flex flex-col gap-2 bg-[#433d3a] p-2 rounded-xl border border-[#1b1918] min-h-0">
+
+        {/* Opponent Info — FIXED HEIGHT */}
+        <div className="bg-[#302e2e] h-20 p-3 rounded-xl flex flex-row items-center justify-between border border-[#1b1918]">
+          <PlayerBanner player={opponent} />
+          <Timer player={opponent} />
         </div>
 
-        <GamePanel />
-
-        <div className="w-full h-1/2 flex flex-col items-center justify-center gap-2">
-          <Timer player={player}/>
-          <PlayerBanner player={player}/>
+        {/* Game Panel — FLEXES, CAN SCROLL INSIDE */}
+        <div className="flex-1 min-h-0 bg-[#302e2e] rounded-xl border border-[#1b1918]">
+          <GamePanel />
         </div>
 
-      </div>
+        {/* Player Info — FIXED HEIGHT */}
+        <div className="bg-[#302e2e] h-20 p-3 rounded-xl flex flex-row items-center justify-between border border-[#1b1918]">
+          <PlayerBanner player={player} />
+          <Timer player={player} />
+        </div>
 
-      <div className="col-span-12 row-span-1">
-        <GomokuBoard/>
-      </div>
+      </section>
 
-      <div className="col-span-7 row-span-1">
-        <ChatBox username={player.playerName}/>
-      </div>
+      {/* BOARD SECTION */}
+      <section className="col-span-12 bg-[#433d3a] p-2 rounded-xl border border-[#1b1918] flex justify-center items-center min-h-0">
+        <div className="bg-[#302e2e] p-2 rounded-xl border border-[#1b1918] h-full w-full overflow-hidden">
+          <GomokuBoard />
+        </div>
+      </section>
 
+      {/* CHAT SECTION */}
+      <section className="col-span-7 bg-[#433d3a] p-2 rounded-xl border border-[#1b1918] flex flex-col min-h-0">
+        <ChatBox username={player.playerName} />
+      </section>
 
       <GameModal />
     </div>
-  )
+  );
 }

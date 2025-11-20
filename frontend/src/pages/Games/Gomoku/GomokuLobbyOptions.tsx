@@ -73,7 +73,7 @@ export function GomokuLobbyOptions() {
         />
       </div>
 
-      <div className="flex flex-row items-center justify-center gap-4 mt-4">
+      <div className="flex flex-row items-center justify-center gap-4">
         {[
           { label: "Rapid (5 min)", mode: "Rapid" },
           { label: "Blitz (3 min)", mode: "Blitz" },

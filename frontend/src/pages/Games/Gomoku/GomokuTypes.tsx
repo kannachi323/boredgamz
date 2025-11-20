@@ -24,6 +24,14 @@ export interface GameState {
   turn: string;
   status: GameStatus;
   lastMove: Move | null;
+  moves: [];
+}
+
+export interface AnalysisState {
+  moves: Move[];
+  board: Board | null
+  active: boolean
+  index: number
 }
 
 export interface GameStatus {
