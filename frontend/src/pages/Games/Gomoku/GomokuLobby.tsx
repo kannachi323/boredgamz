@@ -1,50 +1,67 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
-import { useGameStore } from "../../../stores/useGomokuStore";
-import { LobbyOptionsPanel } from "./GomokuLobbyOptions";
+import { useGomokuStore } from "../../../stores/useGomokuStore";
+import { GomokuLobbyOptions } from "./GomokuLobbyOptions";
+import { GomokuLobbyBoards } from "./GomokuLobbyBoards";
+import { GomokuLobbyModes } from "./GomokuLobbyModes";
+import { GomokuModeModal } from "./GomokuModeModal";
 
-import SMALL_BOARD from '../../../assets/small-board.jpg'
-import MID_BOARD from '../../../assets/mid-board.jpg'
-import LARGE_BOARD from '../../../assets/large-board.jpg'
 
 export function GomokuLobby() {
-  const { setConnection, player, handler, gameState } = useGameStore();
+  const { gameState } = useGomokuStore();
   const navigate = useNavigate();
+  const [activeMode, setActiveMode] = useState('')
+  const [showModeModal, setShowModeModal] = useState(false)
 
   useEffect(() => {
-    if (gameState?.gameID) {
+    if (gameState?.gameID && gameState?.status.code === "online") {
       navigate(`/games/gomoku/${gameState.gameID}`)
     }
   }, [gameState])
 
-  
   return (
     <>
-      <div className="bg-[#302e2e] flex flex-row items-center justify-evenly w-4/5 h-1/8 gap-5 p-5">
-        <LobbyOptionsPanel />
-      </div>
-      <div className="bg-[#433d3a] flex flex-row items-center justify-evenly w-4/5 h-7/8 gap-5 p-5">
-        <div className="bg-[#302e2e] w-1/3 p-5 flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-[#1b1918]
-          hover:bg-[#524b4b] transition-colors duration-300 cursor-pointer"
-          
-          onClick={() => setConnection("9x9", player, handler)}
-        >
-          <p className="text-5xl">9x9</p>
-          <img src={SMALL_BOARD} alt="gomoku board" className="w-full h-auto" />
-        </div>
+      <h1 className="text-7xl text-[#C3B299] font-bold">Gomoku</h1>
 
-        <div className="bg-[#302e2e] w-1/3 p-5 flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-[#1b1918]
-          hover:bg-[#524b4b] transition-colors duration-300 cursor-pointer">
-          <p className="text-5xl">13x13</p>
-          <img src={MID_BOARD} alt="gomoku board" className="w-full h-auto" />
+      <section className="flex flex-col justify-center items-center w-full h-full gap-2">
+        <p className="text-xl text-[#C3B299] font-bold">Mode</p>
+        <div className="bg-[#433d3a] w-4/5 p-4 rounded-2xl">
+          <GomokuLobbyModes onSelect={setActiveMode} onOpen={() => setShowModeModal(true)} />
         </div>
-        <div className="bg-[#302e2e] w-1/3 p-5 flex flex-col items-center justify-center gap-4 rounded-lg border-2 border-[#1b1918]
-          hover:bg-[#524b4b] transition-colors duration-300 cursor-pointer">
-          <p className="text-5xl">19x19</p>
-          <img src={LARGE_BOARD} alt="gomoku board" className="w-full h-auto" />
+      </section>
+
+
+
+      <section className="flex flex-col justify-center items-center w-full h-full gap-2">
+        <p className="text-xl text-[#C3B299] font-bold">Game</p>
+        <div className="bg-[#433d3a] flex flex-row items-center justify-evenly w-4/5 h-1/8 gap-5 p-3 rounded-2xl">
+          <GomokuLobbyOptions />
         </div>
-      </div>
+      </section>
+
+             
+    
+
+      <section className="flex flex-col justify-center items-center w-full h-full gap-2">
+        <p className="text-xl text-[#C3B299] font-bold">Board</p>
+        <div className="bg-[#433d3a] flex flex-row items-center justify-evenly w-4/5 gap-5 p-5 rounded-2xl">
+          <GomokuLobbyBoards />
+        </div>
+      </section>
+
+      {showModeModal && (
+        <GomokuModeModal 
+          mode={activeMode}
+          onClose={() => setShowModeModal(false)}
+        />
+      )}
+
+
+
+      
+      
+
       <div>
         {/* TODO: ads */}
 

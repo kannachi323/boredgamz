@@ -26,7 +26,7 @@ export function GameCard({ title, description, bgImg, bgSize, playLink }: GameCa
             absolute inset-0 
             flex items-center justify-center 
             opacity-0 group-hover:opacity-100
-            transition-opacity duration-300
+            transition-opacity duration-300 rounded-2xl
             bg-black/25
           "
         >
@@ -40,7 +40,7 @@ export function GameCard({ title, description, bgImg, bgSize, playLink }: GameCa
         </a>
       </div>
 
-      <div className="w-full p-6 rounded-3xl shadow-2xl flex flex-col items-start">
+      <div className="w-full p-6 rounded-3xl flex flex-col items-start">
         <h3 className="text-2xl font-extrabold text-white mb-2">{title}</h3>
         <p className="text-gray-300 text-md mb-4">{description}</p>
       </div>

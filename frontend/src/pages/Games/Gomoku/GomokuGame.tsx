@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { Timer } from "../../../components/Timer"
 import { PlayerBanner } from "../../../components/Banner"
 import { GamePanel } from "../../../components/GamePanel"
-import { useGameStore } from "../../../stores/useGomokuStore";
+import { useGomokuStore } from "../../../stores/useGomokuStore";
 import { GomokuBoard } from "./GomokuBoard";
 import { ChatBox } from "../../../features/Chat/ChatBox";
 import { GameModal } from "./GomokuGameModal";
@@ -14,7 +14,7 @@ Matthew pls do this asap lol this is pretty important
 
 
 export default function GomokuGame() {
-  const { gameState, setPlayer, setOpponent, player, opponent } = useGameStore();
+  const { gameState, setPlayer, setOpponent, player, opponent } = useGomokuStore();
 
   useEffect(() => {
     //This effect adds the player clocks from server

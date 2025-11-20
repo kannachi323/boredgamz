@@ -13,8 +13,8 @@ type Stone struct {
 }
 
 type Move struct {
-	R int `json:"r"`
-	C int `json:"c"`
+	Row int `json:"row"`
+	Col int `json:"col"`
 	Color string `json:"color"`
 }
 
@@ -38,17 +38,17 @@ func NewEmptyBoard(size int) *Board {
 }
 
 func AddStoneToBoard(board *Board, move *Move, stone *Stone) {
-	log.Print("Adding stone to board at position:", move.R, move.C, "with color:", stone.Color)
-	board.Stones[move.R][move.C] = stone
+	log.Print("Adding stone to board at position:", move.Row, move.Col, "with color:", stone.Color)
+	board.Stones[move.Row][move.Col] = stone
 	board.NumStones++
 }
 
 func IsValidMove(board *Board, move *Move) bool {
-	if move.R < 0 || move.R >= len(board.Stones) || move.C < 0 || move.C >= len(board.Stones[0]) {
+	if move.Row < 0 || move.Row >= len(board.Stones) || move.Col < 0 || move.Col >= len(board.Stones[0]) {
 		return false
 	}
 
-	return board.Stones[move.R][move.C].Color == "" //empty slot
+	return board.Stones[move.Row][move.Col].Color == "" //empty slot
 }
 
 func IsDraw(board *Board) bool {
@@ -63,8 +63,8 @@ func IsGomoku(stones [][]*Stone, move *Move) bool {
 		{1, -1},
 	}
 
-	row := move.R
-	col := move.C
+	row := move.Row
+	col := move.Col
 	var count int
 
 	for _, d := range directions {

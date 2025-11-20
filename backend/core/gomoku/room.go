@@ -3,6 +3,7 @@ package gomoku
 import (
 	"boredgamz/core"
 	"encoding/json"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,7 +23,7 @@ func NewGomokuRoom(p1, p2 *core.Player, gomokuType string) *GomokuRoom {
 			Timeout: make(chan []byte, 100),
 			GameID: uuid.New().String(),
 		},
-		GameState: NewGomokuGameState(gomokuType, p1, p2),
+		GameState: NewGomokuGame(gomokuType, p1, p2),
 	}
 
 	//IMPORTANT: Link player timeout to room timeout channel
@@ -74,8 +75,6 @@ func (room *GomokuRoom) HandleEvent(raw []byte) {
 	}
 }
 
-
-
 func (room *GomokuRoom) startEventListener() {
 	for raw := range room.Events {
 		var req GomokuClientRequest
@@ -84,11 +83,19 @@ func (room *GomokuRoom) startEventListener() {
 
 		switch (req.Type) {
 		case "move":
-			UpdateGameState(room.GameState, req.Data)
+			var moveData GomokuMoveData
+			err := json.Unmarshal(req.Data, &moveData)
+			log.Println("RAW DATA:", string(req.Data))
+
+			log.Println(moveData)
+			if err != nil { continue }
+			HandleGomokuMove(room.GameState, moveData.Move.Row, moveData.Move.Col, moveData.Move.Color)
+			
+			resData, _ := json.Marshal(room.GameState)
 			var res *GomokuServerResponse
 			res = &GomokuServerResponse{
 				Type: "update",
-				Data: room.GameState,
+				Data: resData,
 			}
 			room.Broadcast(res)
 		}
@@ -162,9 +169,10 @@ func (room *GomokuRoom) startTimeoutListener() {
 		if (room.GameState.Status.Code == "offline") { return }
 		var res *GomokuServerResponse
 		UpdateGameStatus(room.GameState, "timeout", string(playerID))
+		data, _ := json.Marshal(room.GameState)
 		res = &GomokuServerResponse{
 			Type: "update",
-			Data: room.GameState,
+			Data: data,
 		}
 		room.Broadcast(res)
 	}

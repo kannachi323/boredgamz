@@ -1,24 +1,25 @@
 package gomoku
 
-import "boredgamz/core"
+import (
+	"boredgamz/core"
+	"encoding/json"
+)
 
-type GomokuLobbyRequest struct {
-	LobbyType string `json:"lobbyType"`
-	Player  *core.Player `json:"player"`
+type GomokuLobbyData struct {
+  LobbyType string       `json:"lobbyType"`
+  Player    *core.Player `json:"player"`
+}
+
+type GomokuMoveData struct {
+  Move  Move        `json:"move"`
 }
 
 type GomokuClientRequest struct {
   Type string      `json:"type"`
-  Data *GomokuGameState `json:"data"`
+  Data json.RawMessage `json:"data"`
 }
 
 type GomokuServerResponse struct {
-	Type string      `json:"type"`
-  Data *GomokuGameState `json:"data"`
-}
-
-type GomokuMoveRequest struct {
-    Row int `json:"row"`
-    Col int `json:"col"`
-    Player *core.Player `json:"player"`
+  Type string `json:"type"`
+  Data json.RawMessage  `json:"data"`
 }

@@ -1,13 +1,13 @@
 import { useState } from "react";
 
-import { useGameStore } from "../../../stores/useGomokuStore.ts";
+import { useGomokuStore } from "../../../stores/useGomokuStore.ts";
 import { convertTime } from '../../../utils.ts'
 import BLACK from '../../../assets/black.svg'
 import WHITE from '../../../assets/white.svg'
 
 
-export function LobbyOptionsPanel() {
-  const { player, setPlayer } = useGameStore();
+export function GomokuLobbyOptions() {
+  const { player, setPlayer } = useGomokuStore();
   const [colorSelected, setColorSelected] = useState(player.color)
   const [timeControlSelected, setTimeControlSelected] = useState("Rapid")
 
@@ -42,71 +42,62 @@ export function LobbyOptionsPanel() {
   return (
     <>
       <div className="flex flex-row items-center justify-evenly gap-2">
-        <p className="text-2xl">Color:</p>
+        <p className="text-2xl text-[#C3B299] font-bold">Color:</p>
+
+        {/* White Stone */}
         <img
           src={WHITE}
-          alt="preview stone"
-          className={`h-14 w-14 rounded-full cursor-pointer border-2 transition-all duration-300
-            ${colorSelected === "white" && " border-green-300"}`}
+          alt="white stone"
+          className={`
+            h-14 w-14 rounded-full cursor-pointer border-2 transition-all duration-300
+            ${colorSelected === "white"
+              ? "border-[#7DCFB6] shadow-[0_0_8px_#7DCFB6]"
+              : "border-[#C3B299] hover:border-[#7DCFB6]"
+            }
+          `}
           onClick={() => handleColorSelect("white")}
         />
+
+        {/* Black Stone */}
         <img
           src={BLACK}
-          alt={`preview stone`}
-          className={`h-14 w-14 rounded-full cursor-pointer border-2 transition-all duration-300
-            ${colorSelected === "black" && " border-green-300"}`}
+          alt="black stone"
+          className={`
+            h-14 w-14 rounded-full cursor-pointer border-2 transition-all duration-300
+            ${colorSelected === "black"
+              ? "border-[#7DCFB6] shadow-[0_0_8px_#7DCFB6]"
+              : "border-[#C3B299] hover:border-[#7DCFB6]"
+            }
+          `}
           onClick={() => handleColorSelect("black")}
         />
       </div>
-     <div className="flex flex-row items-center justify-center gap-4 py-4">
-        {/* Placeholder: You would define timeControlSelected and handleTimeControlSelect */}
-        {/* For example: const [timeControlSelected, setTimeControlSelected] = useState('Rapid'); */}
-        
-        <p
-          className={`text-xl font-semibold cursor-pointer border-2 rounded-xl px-4 py-2 transition-all duration-300 
-            ${timeControlSelected === "Rapid" 
-              ? "bg-[#585858] text-white" 
-              : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
-            }`}
-          onClick={() => handleTimeControlSelect("Rapid")}
-        >
-          Rapid (5 min)
-        </p>
 
-        <p
-          className={`text-xl font-semibold cursor-pointer border-2 rounded-xl px-4 py-2 transition-all duration-300 
-            ${timeControlSelected === "Blitz" 
-              ? "bg-[#585858] text-white" 
-              : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
-            }`}
-          onClick={() => handleTimeControlSelect("Blitz")}
-        >
-          Blitz (3 min)
-        </p>
-
-        <p
-          className={`text-xl font-semibold cursor-pointer border-2 rounded-xl px-4 py-2 transition-all duration-300 
-            ${timeControlSelected === "Bullet" 
-              ? "bg-[#585858] text-white" 
-              : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
-            }`}
-          onClick={() => handleTimeControlSelect("Bullet")}
-        >
-          Bullet (1 min)
-        </p>
-
-        {/* Note: Hyperbullet is often 30 seconds or less, but keeping your original text */}
-        <p
-          className={`text-xl font-semibold cursor-pointer border-2 rounded-xl px-4 py-2 transition-all duration-300 
-            ${timeControlSelected === "Hyperbullet" 
-              ? "bg-[#585858] text-white" 
-              : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
-            }`}
-          onClick={() => handleTimeControlSelect("Hyperbullet")}
-        >
-          Hyperbullet (30 sec)
-        </p>
+      <div className="flex flex-row items-center justify-center gap-4 mt-4">
+        {[
+          { label: "Rapid (5 min)", mode: "Rapid" },
+          { label: "Blitz (3 min)", mode: "Blitz" },
+          { label: "Bullet (1 min)", mode: "Bullet" },
+          { label: "Hyperbullet (30 sec)", mode: "Hyperbullet" },
+        ].map(({ label, mode }) => (
+          <p
+            key={mode}
+            className={`
+              text-xl font-semibold cursor-pointer rounded-xl px-5 py-2 transition-all duration-300
+              border-2
+              ${
+                timeControlSelected === mode
+                  ? "bg-[#f4c97f] text-black border-[#7DCFB6]"
+                  : "bg-[#2B2825] text-[#C3B299] border-[#514C47] hover:bg-[#514C47]"
+              }
+            `}
+            onClick={() => handleTimeControlSelect(mode)}
+          >
+            {label}
+          </p>
+        ))}
       </div>
+
     </>
   )
 }

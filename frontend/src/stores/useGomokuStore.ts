@@ -1,8 +1,8 @@
 import { create } from 'zustand'
-import { ServerResponse, GameState, Player, ClientRequest, LobbyRequest } from '../pages/Games/Gomoku/GomokuTypes.tsx'
+import { ServerResponse, GameState, Player, ClientRequest } from '../pages/Games/Gomoku/GomokuTypes.tsx'
 import { convertTime } from '../utils.ts'
 
-interface GameStore {
+interface GomokuStore {
   gameState: GameState | null
   conn: WebSocket | null
   player: Player
@@ -10,14 +10,14 @@ interface GameStore {
   
   setPlayer: (player: Player) => void
   setOpponent: (opponent: Player) => void
-  setConnection: (lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) => WebSocket | null
+  setConnection: (lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) => void
   handler: (payload: ServerResponse) => void
-  sendClientRequest: (socket: WebSocket, data: ClientRequest) => void
-  sendLobbyRequest: (socket: WebSocket, data: LobbyRequest) => void
+  send: (socket: WebSocket | null, data: ClientRequest) => void
 
 }
 
-export const useGameStore = create<GameStore>((set) => ({
+
+export const useGomokuStore = create<GomokuStore>((set) => ({
   gameState: null,
   conn: null,
   player: { playerID: '', playerName: '', color: 'black', playerClock: { remaining: convertTime(5, "minutes", "nanoseconds") } },
@@ -27,11 +27,34 @@ export const useGameStore = create<GameStore>((set) => ({
   setOpponent: (opponent: Player) => set({ opponent }),
 
   setConnection: (lobbyType, player, onMessage) => {
-    const conn = join(lobbyType, player, onMessage)
-    set({ conn })
-    return conn
-  },
+    const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/join-gomoku-lobby`);
 
+    socket.onopen = () => {
+      socket.send(JSON.stringify({
+        type: "lobby",
+        data: {
+          lobbyType: lobbyType,
+          player: player,
+        }
+      }));
+    };
+
+    socket.onmessage = (event) => {
+      const payload = JSON.parse(event.data);
+      console.log(payload);
+      onMessage(payload);
+    }
+
+    socket.onerror = () => {
+      //TODO: show popup that shows error status
+    };
+
+    socket.onclose = () => {
+      //TODO: show popup that signals end of game
+    };
+    
+    set({ conn: socket })
+  },
   handler: (payload : ServerResponse) => {
     switch (payload.type) {
       case 'update':{
@@ -44,43 +67,8 @@ export const useGameStore = create<GameStore>((set) => ({
         
     }
   },
-  sendClientRequest: (socket: WebSocket, req: ClientRequest) => {
-    if (socket.readyState !== WebSocket.OPEN) return;
+  send: (socket: WebSocket | null, req: ClientRequest) => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
     socket.send(JSON.stringify(req));
   },
-  sendLobbyRequest: (socket: WebSocket, req: LobbyRequest) => {
-    if (socket.readyState !== WebSocket.OPEN) return;
-    socket.send(JSON.stringify(req));
-  }
-
 }))
-
-
-function join(lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) : WebSocket {
-  const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/join-gomoku-lobby`);
-
-  socket.onopen = () => {
-    const lobbyReq : LobbyRequest = {
-      lobbyType: lobbyType,
-      player: player,
-    };
-    socket.send(JSON.stringify(lobbyReq));
-  };
-
-  socket.onmessage = (event) => {
-    const payload = JSON.parse(event.data);
-    console.log(payload);
-    onMessage(payload);
-  }
-
-  socket.onerror = () => {
-    //TODO: show popup that shows error status
-  };
-
-  socket.onclose = () => {
-    //TODO: show popup that signals end of game
-  };
-
-  return socket
-}
-

@@ -1,15 +1,24 @@
 import { useState } from "react";
 import { GomokuStone } from "./GomokuStone";
-import { useGameStore } from "../../../stores/useGomokuStore"
-import { sendMove } from "./helper";
+import { useGomokuStore } from "../../../stores/useGomokuStore"
 import SMALL_BOARD from "../../../assets/small-board.jpg"
+import { Move } from "./GomokuTypes";
 export function GomokuBoard() {
-  const { gameState } = useGameStore();
+  const { gameState, send, conn, player } = useGomokuStore();
 
   const [hoveredIndex, setHoveredIndex] = useState<[number, number] | null>(null);
 
-  if (!gameState || !gameState.board) {
+  if (!gameState || !gameState.board || !conn) {
     return null;
+  }
+
+  function sendMove(row: number, col: number) {
+    const move : Move = {
+      color: player.color,
+      row: row,
+      col: col
+    }
+    send(conn, {type: "move", data: {move: move}}, )
   }
 
   return (
