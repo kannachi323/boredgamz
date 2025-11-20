@@ -56,6 +56,7 @@ func NewPlayer(playerID, playerName, color string, clock *PlayerClock, conn *web
 func (player *Player) StartPlayer() {
 	player.StartReader()
 	player.StartWriter()
+	player.RunClock()
 }
 
 func (player *Player) ClosePlayer() {
@@ -103,37 +104,39 @@ func (player *Player) StartWriter() {
 
 
 func (player *Player) StartClock() {
-	ticker := time.NewTicker(1 * time.Second)
+    if player.Clock.IsActive.Load() {
+        return
+    }
 
-	player.Clock.IsActive.Store(true)
-	lastTick := time.Now()
-	
-	
-	go func() {
-		defer ticker.Stop()
-		for range ticker.C {
-			if !player.Clock.IsActive.Load() {
-				return
-			}
-				elapsed := time.Since(lastTick)
-				player.Clock.Remaining -= elapsed
-				lastTick = time.Now()
-			
-			if player.Clock.Remaining <= 0 {
-				player.StopClock()
-				select {
-					case player.Clock.Timeout <- []byte(player.PlayerID):
-					default:
-				}
-				return
-			}
-		}
-	}()
+    player.Clock.IsActive.Store(true)
 }
 
 func (player *Player) StopClock() {
-	player.Clock.IsActive.Store(false)
+    player.Clock.IsActive.Store(false)
 }
+
+func (player *Player) RunClock() {
+    ticker := time.NewTicker(time.Second)
+    lastTick := time.Now()
+
+    go func() {
+        for range ticker.C {
+            if player.Clock.IsActive.Load() {
+                now := time.Now()
+                elapsed := now.Sub(lastTick)
+                player.Clock.Remaining -= elapsed
+                lastTick = now
+
+                if player.Clock.Remaining <= 0 {
+                    player.Clock.IsActive.Store(false)
+                }
+            } else {
+                lastTick = time.Now()
+            }
+        }
+    }()
+}
+
 
 
 

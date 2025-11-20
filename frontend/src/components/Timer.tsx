@@ -1,27 +1,34 @@
 import { useEffect, useState } from "react";
 import { Player } from "../pages/Games/Gomoku/GomokuTypes";
-import { useGameStore } from "../stores/useGomokuStore";
+import { useGomokuStore } from "../stores/useGomokuStore";
 
 export function Timer({ player }: { player: Player }) {
-  const { gameState } = useGameStore();
+  const { gameState } = useGomokuStore();
   const [time, setTime] = useState(0);
 
+  // Sync with server each update
   useEffect(() => {
-    if (!gameState || !player?.playerClock || gameState.status.code !== "online") return;
+    if (!gameState || !player?.playerClock) return;
 
-    // Sync with server's remaining time on every update
     const serverSeconds = Math.floor(player.playerClock.remaining / 1e9);
     setTime(serverSeconds);
+  }, [gameState]);
+
+  useEffect(() => {
+    if (!gameState || gameState.status.code !== "online") return;
 
     const interval = setInterval(() => {
-      if (gameState.turn === player.playerID) {
-        setTime((t) => Math.max(0, t - 1));
-        if (time <= 0) return
-      }
+      setTime((t) => {
+        // Only decrement if it's this player's turn
+        if (gameState.turn !== player.playerID) return t;
+
+        // Otherwise decrement safely
+        return Math.max(0, t - 1);
+      });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [gameState?.turn, player?.playerClock?.remaining, player?.playerID]);
+  }, [gameState]);
 
   if (!player?.playerClock) return null;
 
@@ -36,7 +43,8 @@ export function Timer({ player }: { player: Player }) {
   return (
     <div
       className={`w-1/3 p-2 flex justify-center items-center rounded-lg transition-colors duration-300
-        ${isActive ? "bg-green-700 text-white" : "bg-[#363430] text-gray-300"}`}
+        ${isActive ? "bg-green-700 text-white" : "bg-[#363430] text-gray-300"}`
+      }
     >
       <b className="text-3xl">{formatTimer(time)}</b>
     </div>

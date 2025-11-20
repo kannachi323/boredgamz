@@ -29,22 +29,28 @@ func JoinGomokuLobby(lm *core.Lobbycore) http.HandlerFunc {
             return
         }
 
-        var reqBody gomoku.GomokuLobbyRequest
-        if err := json.Unmarshal(msg, &reqBody); err != nil {
+        var clientReq gomoku.GomokuClientRequest
+        if err := json.Unmarshal(msg, &clientReq); err != nil {
             log.Println("Invalid join message format:", err)
             return
         }
-        log.Println(lm.Lobbies)
-        gomokuLobby, ok := lm.GetLobby(reqBody.LobbyType)
+
+        var lobbyData gomoku.GomokuLobbyData
+        if err := json.Unmarshal(clientReq.Data, &lobbyData); err != nil {
+            log.Println("Invalid lobby request data:", err)
+            return
+        }
+
+        gomokuLobby, ok := lm.GetLobby(lobbyData.LobbyType)
 		if !ok {
-			log.Println("Lobby not found:", reqBody.LobbyType)
+			log.Println("Lobby not found:", lobbyData.LobbyType)
 			return
 		}
         player := core.NewPlayer(
-            reqBody.Player.PlayerID,
-            reqBody.Player.PlayerName, 
-            reqBody.Player.Color,
-            reqBody.Player.Clock,
+            lobbyData.Player.PlayerID,
+            lobbyData.Player.PlayerName, 
+            lobbyData.Player.Color,
+            lobbyData.Player.Clock,
             conn,
         )
         gomokuLobby.AddPlayer(player)
@@ -54,17 +60,17 @@ func JoinGomokuLobby(lm *core.Lobbycore) http.HandlerFunc {
 
         p1 := players[0]
 		p2 := players[1]
-        room := gomoku.NewGomokuRoom(p1, p2, reqBody.LobbyType)
+        room := gomoku.NewGomokuRoom(p1, p2, lobbyData.LobbyType)
      
 
         p1.StartPlayer()
         p2.StartPlayer()
         room.Start()
 
-        
+        data, _ := json.Marshal(room.GameState)
         room.Broadcast(&gomoku.GomokuServerResponse{
             Type: "update",
-            Data: room.GameState,
+            Data: data,
         })
        
     }

@@ -3,14 +3,14 @@ import { Outlet, RouteObject } from "react-router-dom";
 
 
 import { useAuthStore } from "../../../stores/useAuthStore";
-import { useGameStore } from "../../../stores/useGomokuStore";
+import { useGomokuStore } from "../../../stores/useGomokuStore";
 import { LoginRedirectModal } from "../../Login/LoginRedirectModal";
 import { GomokuLobby } from "./GomokuLobby";
 import GomokuGame from "./GomokuGame";
 
 function Gomoku() {
   const { checkAuth, isAuthenticated } = useAuthStore();
-  const { setPlayer, player } = useGameStore();
+  const { setPlayer, player } = useGomokuStore();
 
   useEffect(() => {
     const check = async () => {
@@ -27,8 +27,14 @@ function Gomoku() {
 
   if (!isAuthenticated) return <LoginRedirectModal />
 
-  return <Outlet />
+  return (
+    <div className="relative flex flex-col justify-center items-center p-10 gap-10">
 
+      <Outlet />
+
+    </div>
+      
+  )
 }
 
 export default function GomokuRoutes() : RouteObject {

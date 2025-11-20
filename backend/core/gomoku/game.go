@@ -24,12 +24,14 @@ type GomokuGameState struct {
 }
 
 
-func NewGomokuGameState(gomokuType string, p1 *core.Player, p2 *core.Player) *GomokuGameState {
+func NewGomokuGame(gomokuType string, p1 *core.Player, p2 *core.Player) *GomokuGameState {
 	var turn string
 	if p1.Color == "black" {
 		turn = p1.PlayerID
+		p1.StartClock()
 	} else {
 		turn = p2.PlayerID
+		p2.StartClock()
 	}
 
 	var size int
@@ -56,36 +58,34 @@ func NewGomokuGameState(gomokuType string, p1 *core.Player, p2 *core.Player) *Go
 		LastMove: nil,
 		Turn: turn,
 	}
+
 	return newGameState
 }
 
-/*
-Only UpdateGameState should be called by room handler
-*/
-func UpdateGameState(serverGameState *GomokuGameState, clientGameState *GomokuGameState) {
-	
-	err := UpdateLastMove(serverGameState, clientGameState.LastMove)
+/*HANDLERS*/
+func HandleGomokuMove(serverGameState *GomokuGameState, row int, col int, color string) {
+	move := &Move{
+        Row: row,
+        Col: col,
+        Color: color,
+    }
+
+    err := UpdateLastMove(serverGameState, move)
 	if err != nil { return }
+    
 
-	if IsGomoku(serverGameState.Board.Stones, clientGameState.LastMove) {
-		UpdateGameStatus(serverGameState, "win", serverGameState.Turn)
-		return
-	}
-
-	if IsDraw(serverGameState.Board) {
-		UpdateGameStatus(serverGameState, "draw", "")
-		return
-	}
-
-
-	UpdatePlayerClocks(serverGameState);
-	UpdatePlayerTurn(serverGameState);
-
-	clientGameState = serverGameState; //VERY IMPORTANT: server game state is always source of truth
+    if IsGomoku(serverGameState.Board.Stones, move) {
+        UpdateGameStatus(serverGameState, "win", serverGameState.Turn)
+    } else if IsDraw(serverGameState.Board) {
+        UpdateGameStatus(serverGameState, "draw", "")
+    } else {
+        UpdatePlayerClocks(serverGameState)
+        UpdatePlayerTurn(serverGameState)
+    }
 }
 
 /*
-Private handlers for updating game state
+PRIVATE gamestate updaters
 */
 func UpdatePlayerTurn(serverGameState *GomokuGameState) {
 	switch serverGameState.Turn {
@@ -137,8 +137,8 @@ func UpdateGameStatus(gs *GomokuGameState, statusType string, playerID string) {
 }
 
 func UpdatePlayerClocks(serverGameState *GomokuGameState) {
-	currentPlayer := GetPlayerByColor(serverGameState, serverGameState.LastMove.Color)
-	opponentPlayer := GetOpponent(serverGameState, serverGameState.LastMove.Color)
+	currentPlayer := GetPlayerByID(serverGameState, serverGameState.Turn)
+	opponentPlayer := GetOpponent(serverGameState, serverGameState.Turn)
 
 	currentPlayer.StopClock()
 	opponentPlayer.StartClock()

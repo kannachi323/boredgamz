@@ -1,20 +1,29 @@
 import { useState } from "react";
-import { BoardStonePiece } from "./BoardStonePiece";
-import { useGameStore } from "../../stores/useGomokuStore";
-import { sendMove } from "./board";
-
-export function Board() {
-  const { gameState } = useGameStore();
+import { GomokuStone } from "./GomokuStone";
+import { useGomokuStore } from "../../../stores/useGomokuStore"
+import SMALL_BOARD from "../../../assets/small-board.jpg"
+import { Move } from "./GomokuTypes";
+export function GomokuBoard() {
+  const { gameState, send, conn, player } = useGomokuStore();
 
   const [hoveredIndex, setHoveredIndex] = useState<[number, number] | null>(null);
 
-  if (!gameState || !gameState.board) {
+  if (!gameState || !gameState.board || !conn) {
     return null;
+  }
+
+  function sendMove(row: number, col: number) {
+    const move : Move = {
+      color: player.color,
+      row: row,
+      col: col
+    }
+    send(conn, {type: "move", data: {move: move}}, )
   }
 
   return (
     <div className="flex justify-center h-full w-full relative">
-      <img src="/small-board.jpg" alt="gomoku board" className="absolute h-full w-full z-0" />
+      <img src={SMALL_BOARD} alt="gomoku board" className="absolute h-full w-full z-0" />
       <div className="absolute h-full w-full grid grid-cols-9 grid-rows-9 z-10 p-4">
         {gameState.board.stones.flatMap((row, rowIdx) => 
           row.map((stone, colIdx) => (
@@ -25,7 +34,7 @@ export function Board() {
               onMouseEnter={() => setHoveredIndex([rowIdx, colIdx])}
               onMouseLeave={() => setHoveredIndex(null)}
             >
-              <BoardStonePiece
+              <GomokuStone
                 stone={stone}
                 isHovered={
                   hoveredIndex &&

@@ -11,8 +11,8 @@ export interface Board {
 }
 
 export interface Move {
-  r: number;
-  c: number;
+  row: number;
+  col: number;
   color: string;
 }
 
@@ -52,22 +52,39 @@ export interface Stone {
   color: string | null;
 }
 
+export interface ChatMessage {
+  type: "msg"
+  data: {
+    sender: string
+    content: string
+  }
+}
+
+export interface LobbyRequest {
+  type: "lobby"
+  data: {
+    lobbyType: string
+    player: Player
+  }
+}
+
+export interface MoveRequest {
+  type: "move"
+  data: {
+    move: Move
+  }
+}
+
+export type ClientRequest = 
+  | MoveRequest
+  | LobbyRequest
+
+
+//IMPORTANT: server always returns gamestate
 export interface ServerResponse {
   type: string
   data: GameState
 }
 
-export interface ClientRequest {
-  type: string
-  data: GameState
-}
 
-export interface LobbyRequest {
-  lobbyType: string 
-  player: Player
-}
 
-export interface Message {
-  sender: string
-  content: string
-}
