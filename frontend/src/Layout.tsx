@@ -12,7 +12,7 @@ export function AppLayout({children} : LayoutProps) {
       >
         <NavBarV1 />
       </header>
-      <div className="h-[92vh] max-h-[92vh] w-screen max-w-screen overflow-hidden">
+      <div className="h-[92vh] max-h-[92vh] w-screen max-w-screen overflow-scroll">
         {children}
       </div>
     </>

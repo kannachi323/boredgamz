@@ -23,32 +23,32 @@ type Lobby struct {
 }
 
 //IMPORTANT: pass Lobbycore to server so all handlers have access
-type Lobbycore struct {
+type LobbyManager struct {
 	Lobbies map[string]LobbyController
 	mu sync.RWMutex
 }
 
-func NewLobbycore() *Lobbycore {
-	return &Lobbycore{
+func NewLobbyManager() *LobbyManager {
+	return &LobbyManager{
 		Lobbies: make(map[string]LobbyController),
 	}
 }
 
-func (lm *Lobbycore) RegisterLobby(lobbyName string, lobby LobbyController) {
+func (lm *LobbyManager) RegisterLobby(lobbyName string, lobby LobbyController) {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 
 	lm.Lobbies[lobbyName] = lobby
 }
 
-func (lm *Lobbycore) DeactivateLobby(lobbyName string) {
+func (lm *LobbyManager) DeactivateLobby(lobbyName string) {
 	lm.mu.Lock()
 	defer lm.mu.Unlock()
 
 	delete(lm.Lobbies, lobbyName)
 }
 
-func (lm *Lobbycore) GetLobby(lobbyName string) (LobbyController, bool) {
+func (lm *LobbyManager) GetLobby(lobbyName string) (LobbyController, bool) {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
 	

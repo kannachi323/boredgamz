@@ -8,7 +8,7 @@ export function GomokuBoard() {
 
   const [hoveredIndex, setHoveredIndex] = useState<[number, number] | null>(null);
 
-  if (!gameState || !gameState.board || !conn) {
+  if (!gameState || !gameState.board) {
     return null;
   }
 

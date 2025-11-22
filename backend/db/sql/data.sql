@@ -1,5 +1,5 @@
 INSERT INTO users (id, name, email, password, is_admin)
-VALUES(
+VALUES (
     '88d0cd1e-912c-4d7f-9bc8-f9ef324d3df9',
     'Admin', 
     'admin@gmail.com', 
@@ -13,5 +13,3 @@ VALUES(
     crypt('test1234', gen_salt('bf')),
     true
 );
-
-

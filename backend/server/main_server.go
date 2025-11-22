@@ -13,7 +13,7 @@ import (
 type Server struct {
 	Router       *chi.Mux
 	APIRouter    *chi.Mux
-	Lobbycore *core.Lobbycore
+	LobbyManager *core.LobbyManager
 	DB	*db.Database
 }
 
@@ -21,12 +21,12 @@ type Server struct {
 func CreateServer() *Server {
 	s := &Server{
 		Router: chi.NewRouter(),
-		Lobbycore: core.NewLobbycore(),
+		APIRouter: chi.NewRouter(),
+		LobbyManager: core.NewLobbyManager(),
 		DB: &db.Database{},
 	}
-	s.Router.Route("/api", func(r chi.Router) {
-		s.APIRouter = r.(*chi.Mux)
-	})
+	
+	s.Router.Mount("/api", s.APIRouter)
 
 	s.MountDatabase()
 	s.MountHandlers()

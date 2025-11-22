@@ -1,23 +1,27 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGomokuStore } from "../../../stores/useGomokuStore";
 import { X } from "lucide-react";
 
-export function GameModal() {
-  const { gameState } = useGomokuStore();
-  const [visible, setVisible] = useState(true);
+export function GameEnd() {
+  const { gameState, saveGame, player, showGameEndModal, setShowGameEndModal} = useGomokuStore();
 
-  // If the game is still ongoing OR user closed modal, don't display it
-  if (!gameState || gameState.status.code === "online" || !visible) return null;
+  useEffect(() => {
+    if (!gameState || gameState.status.code === "online" || player.playerID !== gameState.players[0].playerID) return;
+    setShowGameEndModal(true)
+    saveGame()
+  }, [gameState])
+
+  if (!gameState || gameState.status.code === "online" || !showGameEndModal) return null;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 p-4">
-      <EndGameCard onClose={() => setVisible(false)} />
+      <GameEndCard onClose={() => setShowGameEndModal(false)} />
     </div>
   );
 }
 
-function EndGameCard({ onClose }: { onClose: () => void }) {
+function GameEndCard({ onClose }: { onClose: () => void }) {
   const { gameState } = useGomokuStore();
   const navigate = useNavigate();
 

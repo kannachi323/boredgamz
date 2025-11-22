@@ -3,8 +3,8 @@ import { useEffect } from "react";
 import { Handshake, RefreshCw, Plus, Flag } from "lucide-react";
 import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
 
-import { useGomokuStore } from "../stores/useGomokuStore";
-import { Move } from "../pages/Games/Gomoku/GomokuTypes";
+import { useGomokuStore } from "../../../stores/useGomokuStore";
+import { Move } from "./GomokuTypes";
 
 
 export function GamePanel() {
@@ -39,7 +39,7 @@ export function GamePanel() {
 
         <button
           className="p-1 rounded hover:bg-[#524b4b] disabled:opacity-40"
-          disabled={analysis.index === 0}
+          disabled={analysis.index === -1}
           onClick={() => startAnalysis()}
         >
           <ChevronsLeft size={28} className="text-[#C3B299]" />
@@ -47,8 +47,8 @@ export function GamePanel() {
 
         <button
           className="p-1 rounded hover:bg-[#524b4b] disabled:opacity-40"
-          disabled={analysis.index === 0}
-          onClick={() => setAnalysisIndex(Math.max(analysis.index - 1, 0))}
+          disabled={analysis.index === -1}
+          onClick={() => setAnalysisIndex(Math.max(analysis.index - 1, -1))}
         >
           <ChevronLeft size={28} className="text-[#C3B299]" />
         </button>

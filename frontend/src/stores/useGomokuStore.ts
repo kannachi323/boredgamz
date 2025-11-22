@@ -8,15 +8,22 @@ interface GomokuStore {
   player: Player
   opponent: Player
   analysis: AnalysisState
+  showGameEndModal: boolean
+
+
+  setGameState: (gameState: GameState) => void
+  setPlayer: (player: Player) => void
+  setOpponent: (opponent: Player) => void
   startAnalysis: () => void
   exitAnalysis: () => void
   setAnalysisIndex: (idx: number) => void
-  
-  setPlayer: (player: Player) => void
-  setOpponent: (opponent: Player) => void
+  saveGame: () => Promise<void>
+  loadGame: (gameID: string) => Promise<void>
   setConnection: (lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) => void
+  reconnect: () => void
   handler: (payload: ServerResponse) => void
   send: (socket: WebSocket | null, data: ClientRequest) => void
+  setShowGameEndModal: (show: boolean) => void
 
 }
 
@@ -27,18 +34,17 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
   player: { playerID: '', playerName: '', color: 'black', playerClock: { remaining: convertTime(5, "minutes", "nanoseconds") } },
   opponent: { playerID: '', playerName: '', color: 'black', playerClock: { remaining: convertTime(5, "minutes", "nanoseconds")} },
   analysis: { moves: [], board: null, active: false, index: 0 },
+  showGameEndModal: false,
+
+  setGameState: (gameState: GameState) => set({ gameState }),
+  setPlayer: (player: Player) => set({ player }),
+  setOpponent: (opponent: Player) => set({ opponent }),
+
+  
 
   startAnalysis: () => {
-    const {gameState } = get();
-    const moves = gameState?.moves || []
-    set({
-      analysis: {
-        moves: moves,
-        active: true,
-        index: 0,
-        board: buildBoardFromMoves(moves, 0),
-      }
-    });
+    const { setAnalysisIndex } = get();
+    setAnalysisIndex(-1);
   },
 
   exitAnalysis: () => {
@@ -67,8 +73,32 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
     });
   },
 
-  setPlayer: (player: Player) => set({ player }),
-  setOpponent: (opponent: Player) => set({ opponent }),
+  saveGame: async () => {
+    const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/gomoku/game`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ type: "save", data: get().gameState }),
+    });
+    if (!res.ok) {
+      console.error("Failed to save game");
+    }
+  },
+
+  loadGame: async (gameID: string): Promise<void> => {
+    const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/gomoku/game?gameID=${gameID}`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      set({ gameState: data as GameState });
+    } else {
+      console.error("Failed to fetch game");
+    }
+  },
 
   setConnection: (lobbyType, player, onMessage) => {
     const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/join-gomoku-lobby`);
@@ -99,6 +129,18 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
     
     set({ conn: socket })
   },
+  reconnect: () => {
+    const { conn, player, gameState } = get();
+    if (conn && gameState) {
+      conn.send(JSON.stringify({
+        type: "reconnect",
+        data: {
+          player: player,
+          gameID: gameState.gameID,
+        }
+      }));
+    }
+  },
   handler: (payload : ServerResponse) => {
     switch (payload.type) {
       case 'update':{
@@ -111,11 +153,16 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
         
     }
   },
+
   send: (socket: WebSocket | null, req: ClientRequest) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     socket.send(JSON.stringify(req));
   },
-}))
+
+  setShowGameEndModal: (show: boolean) => set({ showGameEndModal: show }),
+
+
+}));
 
 export function buildBoardFromMoves(
   moves: Move[],
@@ -123,14 +170,12 @@ export function buildBoardFromMoves(
   size: number = 9
 ): Board {
 
-  // Initialize an empty board
   const stones: Board["stones"] = Array.from({ length: size }, () =>
     Array.from({ length: size }, () => ({ color: null }))
   );
 
   let numStones = 0;
-
-  // Apply moves sequentially
+  
   for (let i = 0; i <= until && i < moves.length; i++) {
     const m = moves[i];
 

@@ -22,5 +22,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "src/components", "src/pages/Games/Gomoku/GomokuGameModal.tsx"]
+  "include": ["src", "src/components", "src/pages/Games/Gomoku/GomokuGameEndModal.tsx"]
 }

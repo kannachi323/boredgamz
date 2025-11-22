@@ -1,15 +1,18 @@
 import { useEffect } from "react";
+import { useParams } from "react-router-dom";
 
 import { PlayerBanner } from "../../../components/Banner";
-import { GamePanel } from "../../../components/GamePanel";
+import { GamePanel } from "./GomkuGamePanel";
 import { useGomokuStore } from "../../../stores/useGomokuStore";
 import { GomokuBoard } from "./GomokuBoard";
 import { ChatBox } from "../../../features/Chat/ChatBox";
-import { GameModal } from "./GomokuGameModal";
+import { GameEnd } from "./GomokuGameEndModal";
 import { Timer } from "../../../components/Timer";
 
+
 export default function GomokuGame() {
-  const { gameState, setPlayer, setOpponent, player, opponent } = useGomokuStore();
+  const { gameState, setPlayer, setOpponent, player, opponent, loadGame } = useGomokuStore();
+  const { gameID } = useParams();
 
   useEffect(() => {
     if (!player || !gameState) return;
@@ -20,6 +23,12 @@ export default function GomokuGame() {
     setPlayer(p1.playerID === player.playerID ? p1 : p2);
     setOpponent(p1.playerID === player.playerID ? p2 : p1);
   }, [gameState]);
+
+  useEffect(() => {
+    if (!gameID) return;
+    loadGame(gameID)
+    console.log(gameState)
+  }, [gameID])
 
   return (
     <div className="h-[90vh] w-full grid grid-cols-26 gap-6 p-6 bg-[#1b1918] overflow-hidden">
@@ -58,7 +67,7 @@ export default function GomokuGame() {
         <ChatBox username={player.playerName} />
       </section>
 
-      <GameModal />
+      <GameEnd />
     </div>
   );
 }

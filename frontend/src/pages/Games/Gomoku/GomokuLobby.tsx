@@ -20,7 +20,7 @@ export function GomokuLobby() {
   }, [gameState]);
 
   return (
-    <div className="relative flex flex-col justify-center items-center p-10 gap-10 h-full w-full">
+    <div className="relative flex flex-col justify-center items-center p-10 gap-10">
       <h1 className="text-6xl text-[#C3B299] font-bold">Gomoku</h1>
 
       {/* Game Options */}
