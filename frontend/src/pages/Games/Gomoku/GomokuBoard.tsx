@@ -4,11 +4,11 @@ import { useGomokuStore } from "../../../stores/useGomokuStore"
 import SMALL_BOARD from "../../../assets/small-board.jpg"
 import { Move } from "./GomokuTypes";
 export function GomokuBoard() {
-  const { gameState, send, conn, player } = useGomokuStore();
+  const { gameState, send, conn, player, analysis } = useGomokuStore();
 
   const [hoveredIndex, setHoveredIndex] = useState<[number, number] | null>(null);
 
-  if (!gameState || !gameState.board || !conn) {
+  if (!gameState || !gameState.board) {
     return null;
   }
 
@@ -21,11 +21,13 @@ export function GomokuBoard() {
     send(conn, {type: "move", data: {move: move}}, )
   }
 
+  const board = analysis.active ? analysis.board : gameState.board
+
   return (
     <div className="flex justify-center h-full w-full relative">
       <img src={SMALL_BOARD} alt="gomoku board" className="absolute h-full w-full z-0" />
       <div className="absolute h-full w-full grid grid-cols-9 grid-rows-9 z-10 p-4">
-        {gameState.board.stones.flatMap((row, rowIdx) => 
+        {board?.stones.flatMap((row, rowIdx) => 
           row.map((stone, colIdx) => (
             <div
               key={`${rowIdx}-${colIdx}`}

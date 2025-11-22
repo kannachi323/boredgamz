@@ -13,7 +13,9 @@ import (
 
 	"boredgamz/api"
 	"boredgamz/core"
+	"boredgamz/core/gomoku"
 	"boredgamz/db"
+	gomokudb "boredgamz/db/gomoku"
 	"boredgamz/middleware"
 	"boredgamz/server"
 	"boredgamz/utils"
@@ -53,39 +55,70 @@ func CloseTestDB(testDB *db.Database) {
 }
 
 func ResetTestDB(testDB *db.Database) error {
-	ctx := context.Background()
-	_, err := testDB.Pool.Exec(ctx, "TRUNCATE TABLE users RESTART IDENTITY CASCADE;")
-	if err != nil {
-		return fmt.Errorf("failed to truncate test database: %w", err)
-	}
-	
-	sqlBytes, err := os.ReadFile("../db/sql/data.sql")
-	if err != nil {
-		return fmt.Errorf("failed to read SQL file: %w", err)
-	}
-	sql := string(sqlBytes)
+    ctx := context.Background()
 
-	_, err = testDB.Pool.Exec(ctx, sql)
-	if err != nil {
-		return fmt.Errorf("failed to seed test database: %w", err)
-	}
-	return nil
+    _, err := testDB.Pool.Exec(ctx, `
+DO $$
+DECLARE
+    stmt text;
+BEGIN
+    SELECT 'TRUNCATE TABLE ' || string_agg(format('%I.%I', schemaname, tablename), ', ') || ' RESTART IDENTITY CASCADE;'
+    INTO stmt
+    FROM pg_tables
+    WHERE schemaname = 'public';
+
+    EXECUTE stmt;
+END $$;`)
+    if err != nil {
+        return fmt.Errorf("failed to truncate all tables: %w", err)
+    }
+
+    // seed (optional)
+    sqlBytes, err := os.ReadFile("../db/sql/data.sql")
+    if err != nil {
+        return fmt.Errorf("failed to read seed SQL file: %w", err)
+    }
+
+    _, err = testDB.Pool.Exec(ctx, string(sqlBytes))
+    if err != nil {
+        return fmt.Errorf("failed to seed test database: %w", err)
+    }
+
+    return nil
 }
+
 
 func CreateTestServer() *server.Server {
 	s := &server.Server{
 		Router: chi.NewRouter(),
-		Lobbycore: core.NewLobbycore(),
+		APIRouter: chi.NewRouter(),
+		LobbyManager: core.NewLobbyManager(),
 		DB: testDB, //this database is already mounted from main test setup
 	}
-	s.MountHandlers()
 
+  s.Router.Mount("/api", s.APIRouter)
+
+  s.MountHandlers()
 	return s
+}
+
+func CreateTestGomokuGameState() *gomoku.GomokuGameState {
+	return &gomoku.GomokuGameState{
+		GameID: "04c717b7-1234-4db6-afa1-c92d4afa9f0f",
+		Players: []*core.Player{
+			{PlayerID: "f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0", PlayerName: "Alice", Color: "black"},
+			{PlayerID: "88d0cd1e-912c-4d7f-9bc8-f9ef324d3df9", PlayerName: "Bob", Color: "white"},
+		},
+		Moves: []*gomoku.Move{
+			{Row: 0, Col: 1, Color: "black"},
+			{Row: 1, Col: 1, Color: "white"},
+		},
+	}
 }
 
 func executeRequest(req *http.Request, s *server.Server) *httptest.ResponseRecorder {
 	rr := httptest.NewRecorder()
-	s.Router.ServeHTTP(rr, req)
+	s.APIRouter.ServeHTTP(rr, req)
 
 	return rr
 }
@@ -289,7 +322,128 @@ func TestJWTRefresh(t *testing.T) {
 	rr := executeRequest(req, s)
 	checkResponseCode(t, http.StatusOK, rr.Code)
 }
+func TestPostGame(t *testing.T) {
+    require.NoError(t, ResetTestDB(testDB))
+    s := CreateTestServer()
 
+    // Create auth JWT
+    token, err := utils.GenerateAccessJWT("f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0")
+    require.NoError(t, err)
 
+    // Prepare request body
+    gameState := CreateTestGomokuGameState()
+    gameStateBytes, _ := json.Marshal(gameState)
+
+    reqBody, _ := json.Marshal(gomoku.GomokuClientRequest{
+        Type: "save",
+        Data: gameStateBytes,
+    })
+
+    // Call correct endpoint with API prefix
+    req := httptest.NewRequest("POST", "/gomoku/game", bytes.NewReader(reqBody))
+    req.Header.Set("Content-Type", "application/json")
+
+    // Add auth cookie
+    req.AddCookie(&http.Cookie{
+        Name:  "access_token",
+        Value: token,
+    })
+
+    rr := executeRequest(req, s)
+    checkResponseCode(t, http.StatusOK, rr.Code)
+}
+
+func TestGetGame(t *testing.T) {
+	require.NoError(t, ResetTestDB(testDB))
+	s := CreateTestServer()
+
+	// Insert game directly through DB layer
+	gameState := CreateTestGomokuGameState()
+	err := gomokudb.InsertGame(s.DB, gameState)
+	require.NoError(t, err)
+
+	// Auth token
+	token, err := utils.GenerateAccessJWT("f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0")
+	require.NoError(t, err)
+
+	url := fmt.Sprintf("/gomoku/game?gameID=%s", gameState.GameID)
+
+	req := httptest.NewRequest("GET", url, nil)
+	req.AddCookie(&http.Cookie{
+			Name:  "access_token",
+			Value: token,
+	})
+
+	rr := executeRequest(req, s)
+	checkResponseCode(t, http.StatusOK, rr.Code)
+
+	// Decode response
+	var returnedState gomoku.GomokuGameState
+	err = json.Unmarshal(rr.Body.Bytes(), &returnedState)
+	require.NoError(t, err)
+
+	// Assertions
+	require.Equal(t, gameState.GameID, returnedState.GameID)
+	require.Equal(t, len(gameState.Moves), len(returnedState.Moves))
+	require.Equal(t, gameState.Players[0].PlayerID, returnedState.Players[0].PlayerID)
+}
+
+func TestGetGameEmpty(t *testing.T) {
+	require.NoError(t, ResetTestDB(testDB))
+	s := CreateTestServer()
+
+	// Auth token
+	token, err := utils.GenerateAccessJWT("f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0")
+	require.NoError(t, err)
+
+	url := fmt.Sprintf("/gomoku/game?gameID=%s", "935fc971-5363-4817-b8db-bcce7b56809b")
+
+	req := httptest.NewRequest("GET", url, nil)
+	req.AddCookie(&http.Cookie{
+			Name:  "access_token",
+			Value: token,
+	})
+
+	rr := executeRequest(req, s)
+	checkResponseCode(t, http.StatusNotFound, rr.Code)
+}
+
+func TestGetGames(t *testing.T) {
+	require.NoError(t, ResetTestDB(testDB))
+	s := CreateTestServer()
+
+	// Insert games directly through DB layer
+	playerID := "f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0"
+
+	gameState1 := CreateTestGomokuGameState()
+	err := gomokudb.InsertGame(s.DB, gameState1)
+	require.NoError(t, err)
 	
-	
+	gameState2 := CreateTestGomokuGameState()
+	gameState2.GameID = "bbd217b7-1234-4db6-afa1-c92d4afa9f0f"
+	err = gomokudb.InsertGame(s.DB, gameState2)
+	require.NoError(t, err)
+
+	// Auth token
+	token, err := utils.GenerateAccessJWT(playerID)
+	require.NoError(t, err)
+
+	url := fmt.Sprintf("/gomoku/games?playerID=%s", playerID)
+
+	req := httptest.NewRequest("GET", url, nil)
+	req.AddCookie(&http.Cookie{
+			Name:  "access_token",
+			Value: token,
+	})
+
+	rr := executeRequest(req, s)
+	checkResponseCode(t, http.StatusOK, rr.Code)
+
+	// Decode response
+	var returnedStates []*gomoku.GomokuGameState
+	err = json.Unmarshal(rr.Body.Bytes(), &returnedStates)
+	require.NoError(t, err)
+
+	// Assertions	
+	require.Equal(t, 2, len(returnedStates))
+}

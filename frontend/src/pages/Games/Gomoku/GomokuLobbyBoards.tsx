@@ -19,14 +19,15 @@ export function GomokuLobbyBoards() {
       {boards.map(({ size, img }) => (
         <div
           key={size}
-          className="bg-[#302e2e] w-1/7  p-4 flex flex-col items-center justify-center gap-3
-          rounded-lg border border-[#1b1918] hover:bg-[#524b4b] transition-colors duration-300 cursor-pointer"
+          className="bg-[#302e2e] aspect-square w-[256px] flex flex-col items-center justify-center
+          rounded-lg border border-[#1b1918] hover:bg-[#524b4b] transition cursor-pointer p-2 gap-2"
           onClick={() => setConnection(size, player, handler)}
         >
-          <p className="text-3xl text-[#C3B299]">{size}</p>
-          <img src={img} alt="gomoku board" className="w-full h-auto rounded-md" />
+          <p className="text-2xl text-[#C3B299]">{size}</p>
+          <img src={img} alt="gomoku board" className="w-[256px] aspect-square rounded-md object-cover" />
         </div>
       ))}
     </>
-  )
+  );
+
 }

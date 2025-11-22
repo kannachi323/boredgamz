@@ -42,8 +42,8 @@ export function Timer({ player }: { player: Player }) {
 
   return (
     <div
-      className={`w-1/3 p-2 flex justify-center items-center rounded-lg transition-colors duration-300
-        ${isActive ? "bg-green-700 text-white" : "bg-[#363430] text-gray-300"}`
+      className={`flex justify-center items-center rounded-lg transition-colors duration-300
+        ${isActive ? "text-[#C3B299]" : " text-white"}`
       }
     >
       <b className="text-3xl">{formatTimer(time)}</b>

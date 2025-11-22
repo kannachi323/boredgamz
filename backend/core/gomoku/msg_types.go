@@ -14,6 +14,10 @@ type GomokuMoveData struct {
   Move  Move        `json:"move"`
 }
 
+type GomokuGameStateData struct {
+  GameState *GomokuGameState `json:"gameState"`
+}
+
 type GomokuClientRequest struct {
   Type string      `json:"type"`
   Data json.RawMessage `json:"data"`

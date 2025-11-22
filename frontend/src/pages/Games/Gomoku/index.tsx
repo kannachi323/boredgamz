@@ -28,12 +28,7 @@ function Gomoku() {
   if (!isAuthenticated) return <LoginRedirectModal />
 
   return (
-    <div className="relative flex flex-col justify-center items-center p-10 gap-10">
-
-      <Outlet />
-
-    </div>
-      
+    <Outlet />
   )
 }
 

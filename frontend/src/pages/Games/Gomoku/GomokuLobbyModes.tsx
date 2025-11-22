@@ -14,15 +14,16 @@ export function GomokuLobbyModes({ onSelect, onOpen }: { onSelect: (mode: string
   }
 
   return (
-    <div className="flex flex-row justify-evenly w-full gap-6">
+    <>
       {modes.map((mode) => (
         <div
           key={mode.value}
           onClick={() => handleSelect(mode.value)}
           className="
-            bg-[#302e2e] 
+            bg-[#302e2e] aspect-square 
+            w-[128px] h-auto
             flex flex-col items-center justify-center
-            gap-2 py-6 px-8
+            gap-2 
             rounded-lg border border-[#1b1918] 
             text-[#C3B299] text-2xl font-semibold
             hover:bg-[#524b4b] cursor-pointer 
@@ -33,6 +34,6 @@ export function GomokuLobbyModes({ onSelect, onOpen }: { onSelect: (mode: string
           {mode.label}
         </div>
       ))}
-    </div>
+    </>
   );
 }
