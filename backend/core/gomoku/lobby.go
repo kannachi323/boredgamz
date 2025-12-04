@@ -3,9 +3,9 @@ package gomoku
 import (
 	"boredgamz/core"
 	"container/list"
-	"fmt"
 	"log"
 	"sync"
+	"time"
 )
 
 type GomokuLobby struct {
@@ -14,6 +14,7 @@ type GomokuLobby struct {
 	WhiteQueue *list.List
 	BlackQueue *list.List
 	PlayerMap  map[*core.Player]*GomokuLobbySlot
+	LobbyType string
 	mu sync.RWMutex
 }
 
@@ -27,13 +28,17 @@ func NewGomokuLobby(maxPlayers int, gomokuType string) core.LobbyController {
 		Lobby: &core.Lobby{
 			NumPlayers: 0,
 			MaxPlayers: maxPlayers,
-			RoomManager: nil,
+			RoomManager: core.NewRoomManager(),
 		},
 		GomokuType: gomokuType,
 		WhiteQueue: list.New(),
 		BlackQueue: list.New(),
+		LobbyType: gomokuType,
 		PlayerMap: make(map[*core.Player]*GomokuLobbySlot),
 	}
+	
+	go gomokuLobby.MatchPlayers()
+
 	return gomokuLobby
 }
 
@@ -77,20 +82,70 @@ func (lobby *GomokuLobby) RemovePlayer(player *core.Player) {
 	lobby.NumPlayers--
 }
 
-func (lobby *GomokuLobby) MatchPlayers() ([]*core.Player, bool) {
-	if lobby.WhiteQueue.Len() == 0 || lobby.BlackQueue.Len() == 0 { return nil, false }
 
-	e1 := lobby.WhiteQueue.Front()
-	e2 := lobby.BlackQueue.Front()
-	playerWhite := e1.Value.(*core.Player)
-	playerBlack := e2.Value.(*core.Player)
+func (lobby *GomokuLobby) MatchPlayers() {
+	for {
+		w, b, ok := lobby.tryMatch()
+		if ok {
+			log.Println("Matched:", w.PlayerID, b.PlayerID)
 
-	lobby.RemovePlayer(playerWhite)
-	lobby.RemovePlayer(playerBlack)
+			room := NewGomokuRoom(w, b, lobby.LobbyType)
+			if room != nil {
+				lobby.RoomManager.RegisterPlayerToRoom(w.PlayerID, room)
+				lobby.RoomManager.RegisterPlayerToRoom(b.PlayerID, room)
+				w.StartPlayer()
+				b.StartPlayer()
+				room.Start()
+			}
+		}
 
-	if (playerWhite.PlayerID == playerBlack.PlayerID) { return nil, false }
+		// Nothing to match — avoid busy spinning
+		time.Sleep(100 * time.Millisecond)
+	}
+}
 
-	fmt.Println("Matched players:", playerWhite.PlayerID, playerBlack.PlayerID)
 
-	return []*core.Player{playerWhite, playerBlack}, true
+//Private logic
+func (lobby *GomokuLobby) tryMatch() (*core.Player, *core.Player, bool) {
+    lobby.mu.Lock()
+    defer lobby.mu.Unlock()
+
+    for lobby.WhiteQueue.Len() > 0 && lobby.BlackQueue.Len() > 0 {
+
+        w := lobby.WhiteQueue.Front().Value.(*core.Player)
+        b := lobby.BlackQueue.Front().Value.(*core.Player)
+
+        if w.Conn == nil {
+            lobby.WhiteQueue.Remove(lobby.WhiteQueue.Front())
+            delete(lobby.PlayerMap, w)
+            lobby.NumPlayers--
+            continue
+        }
+        if b.Conn == nil {
+            lobby.BlackQueue.Remove(lobby.BlackQueue.Front())
+            delete(lobby.PlayerMap, b)
+            lobby.NumPlayers--
+            continue
+        }
+        if w.PlayerID == b.PlayerID {
+            // remove both if corrupted
+            lobby.WhiteQueue.Remove(lobby.WhiteQueue.Front())
+            lobby.BlackQueue.Remove(lobby.BlackQueue.Front())
+            delete(lobby.PlayerMap, w)
+            delete(lobby.PlayerMap, b)
+            lobby.NumPlayers -= 2
+            continue
+        }
+
+        // VALID MATCH — remove from queues here under lock
+        lobby.WhiteQueue.Remove(lobby.WhiteQueue.Front())
+        lobby.BlackQueue.Remove(lobby.BlackQueue.Front())
+        delete(lobby.PlayerMap, w)
+        delete(lobby.PlayerMap, b)
+        lobby.NumPlayers -= 2
+
+        return w, b, true
+    }
+
+    return nil, nil, false
 }

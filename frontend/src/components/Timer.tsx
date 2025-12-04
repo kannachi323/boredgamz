@@ -6,29 +6,26 @@ export function Timer({ player }: { player: Player }) {
   const { gameState } = useGomokuStore();
   const [time, setTime] = useState(0);
 
-  // Sync with server each update
   useEffect(() => {
-    if (!gameState || !player?.playerClock) return;
+    if (!player?.playerClock) return;
 
     const serverSeconds = Math.floor(player.playerClock.remaining / 1e9);
-    setTime(serverSeconds);
-  }, [gameState]);
+    setTime(serverSeconds)
+  }, [gameState, player]);
 
   useEffect(() => {
     if (!gameState || gameState.status.code !== "online") return;
 
     const interval = setInterval(() => {
       setTime((t) => {
-        // Only decrement if it's this player's turn
         if (gameState.turn !== player.playerID) return t;
 
-        // Otherwise decrement safely
         return Math.max(0, t - 1);
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [gameState]);
+  }, [gameState, player.playerID]);
 
   if (!player?.playerClock) return null;
 

@@ -12,8 +12,8 @@ import (
 
 type LobbyController interface {
 	AddPlayer(player *Player)
-	MatchPlayers() ([]*Player, bool)
 	RemovePlayer(player *Player)
+	MatchPlayers()
 }
 
 type Lobby struct {

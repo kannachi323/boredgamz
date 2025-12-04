@@ -14,7 +14,7 @@ type GomokuRoom struct {
 	GameState *GomokuGameState
 }
 
-func NewGomokuRoom(p1, p2 *core.Player, gomokuType string) *GomokuRoom {
+func NewGomokuRoom(p1, p2 *core.Player, gomokuType string) core.RoomController{
 	newGomokuRoom := &GomokuRoom{
 		Room: &core.Room{
 			RoomID: uuid.New().String(),
@@ -39,6 +39,17 @@ func (room *GomokuRoom) Start() {
 	go room.startPlayersListener()
 	go room.startConnectionListener()
 
+	//make initial broadcast of game state
+	resData, _ := json.Marshal(room.GameState)
+	res := &GomokuServerResponse{
+		Type: "update",
+		Data: resData,
+	}
+	resBytes, err := json.Marshal(res)
+	if err == nil {
+		log.Println("Broadcasting initial game state for room:", room.RoomID)
+		room.Broadcast(resBytes)
+	}
 }
 
 
@@ -50,20 +61,18 @@ func (room *GomokuRoom) Close() {
 	})
 }
 
-func (room *GomokuRoom) Broadcast(res *GomokuServerResponse)  {
+func (room *GomokuRoom) Broadcast(res []byte)  {
 	for _, player := range room.Players {
 		if player.Disconnected.Load() { continue }
 		room.Send(player, res)
 	}
 }
 
-func (room *GomokuRoom) Send(p *core.Player, res *GomokuServerResponse) {
-	msg, err := json.Marshal(res)
-	if err != nil { return }
+func (room *GomokuRoom) Send(p *core.Player, res []byte) {
 	if p.Disconnected.Load() { return }
 
 	select {
-	case p.Outgoing <- msg:
+	case p.Outgoing <- res:
 	default:
 	}
 }
@@ -97,7 +106,11 @@ func (room *GomokuRoom) startEventListener() {
 				Type: "update",
 				Data: resData,
 			}
-			room.Broadcast(res)
+			resBytes, err := json.Marshal(res)
+			if err == nil {
+				room.Broadcast(resBytes)
+			}
+			
 		}
 	}
 }
@@ -174,6 +187,9 @@ func (room *GomokuRoom) startTimeoutListener() {
 			Type: "update",
 			Data: data,
 		}
-		room.Broadcast(res)
+		resBytes, err := json.Marshal(res)
+		if err == nil {
+			room.Broadcast(resBytes)
+		}
 	}
 }
