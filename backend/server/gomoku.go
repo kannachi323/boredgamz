@@ -7,9 +7,9 @@ import (
 )
 
 func (s* Server) MountGomokuLobbies() {
-	s.LobbyManager.RegisterLobby("19x19", gomokucore.NewGomokuLobby(1000, "19x19"))
-	s.LobbyManager.RegisterLobby("15x15", gomokucore.NewGomokuLobby(1000, "15x15"))
-	s.LobbyManager.RegisterLobby("9x9", gomokucore.NewGomokuLobby(1000, "9x9"))
+	s.LobbyManager.RegisterLobby("19x19", gomokucore.NewGomokuLobby(1000, "19x19", s.DB))
+	s.LobbyManager.RegisterLobby("15x15", gomokucore.NewGomokuLobby(1000, "15x15", s.DB))
+	s.LobbyManager.RegisterLobby("9x9", gomokucore.NewGomokuLobby(1000, "9x9", s.DB))
 }
 
 func (s *Server) MountGomokuHandlers() {

@@ -7,6 +7,7 @@ lobby will be in charge of matching players quickly
 */
 
 import (
+	"boredgamz/db"
 	"sync"
 )
 
@@ -20,6 +21,7 @@ type Lobby struct {
 	NumPlayers  int
 	MaxPlayers  int
 	RoomManager *RoomManager
+	DB *db.Database
 }
 
 //IMPORTANT: pass Lobbycore to server so all handlers have access

@@ -32,14 +32,11 @@ type Player struct {
 
 type PlayerClock struct {
 	Remaining time.Duration `json:"remaining"`
-	IsActive  atomic.Bool   `json:"-"`
-	Timeout      chan interface{} `json:"-"`
 }
 
 func NewPlayerClock(remaining time.Duration) *PlayerClock {
 	return &PlayerClock{
 		Remaining: remaining,
-		Timeout:  make(chan interface{}, 10),
 	}
 }
 
@@ -60,7 +57,6 @@ func NewPlayer(playerID, playerName, color string, clock *PlayerClock, conn *web
 func (p *Player) StartPlayer() {
 	p.StartReader()
 	p.StartWriter()
-	p.RunClock()
 }
 
 func (p *Player) ClosePlayer() {
@@ -110,39 +106,3 @@ func (p *Player) StartWriter() {
 	}()
 }
 
-
-func (p *Player) StartClock() {
-	p.Clock.IsActive.Store(true)
-}
-
-func (p *Player) StopClock() {
-	p.Clock.IsActive.Store(false)
-}
-
-func (p *Player) RunClock() {
-	ticker := time.NewTicker(time.Second)
-
-	go func() {
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				if p.Clock.IsActive.Load() {
-					p.Clock.Remaining -= time.Second
-
-					if p.Clock.Remaining <= 0 {
-						p.Clock.Remaining = 0
-						p.Clock.IsActive.Store(false)
-						select {
-						case p.Clock.Timeout <- []byte(p.PlayerID):
-						}
-					}
-				}
-
-			case <-p.Clock.Timeout:
-				return
-			}
-		}
-	}()
-}

@@ -4,12 +4,12 @@ import { useGomokuStore } from "../../../stores/useGomokuStore";
 import { X } from "lucide-react";
 
 export function GameEnd() {
-  const { gameState, saveGame, showGameEndModal, setShowGameEndModal} = useGomokuStore();
+  const { gameState, showGameEndModal, setShowGameEndModal} = useGomokuStore();
 
   useEffect(() => {
     if (!gameState || gameState.status.code === "online") return;
     setShowGameEndModal(true)
-    saveGame()
+  
   }, [gameState?.status.code])
 
   if (!gameState || gameState.status.code === "online" || !showGameEndModal) return null;

@@ -17,7 +17,6 @@ interface GomokuStore {
   startAnalysis: () => void
   exitAnalysis: () => void
   setAnalysisIndex: (idx: number) => void
-  saveGame: () => Promise<void>
   loadGame: (gameID: string) => Promise<void>
   setConnection: (lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) => void
   reconnect: () => void
@@ -71,20 +70,6 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
         board: buildBoardFromMoves(moves, idx),
       }
     });
-  },
-
-  saveGame: async () => {
-    const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/gomoku/game`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({ type: "save", data: get().gameState }),
-    });
-    if (!res.ok) {
-      console.error("Failed to save game");
-    }
   },
 
   loadGame: async (gameID: string): Promise<void> => {

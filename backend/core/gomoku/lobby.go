@@ -2,6 +2,7 @@ package gomoku
 
 import (
 	"boredgamz/core"
+	"boredgamz/db"
 	"container/list"
 	"log"
 	"sync"
@@ -23,12 +24,13 @@ type GomokuLobbySlot struct {
 	Queue *list.List
 }
 
-func NewGomokuLobby(maxPlayers int, gomokuType string) core.LobbyController {
+func NewGomokuLobby(maxPlayers int, gomokuType string, db *db.Database) core.LobbyController {
 	gomokuLobby := &GomokuLobby{
 		Lobby: &core.Lobby{
 			NumPlayers: 0,
 			MaxPlayers: maxPlayers,
 			RoomManager: core.NewRoomManager(),
+			DB: db,
 		},
 		GomokuType: gomokuType,
 		WhiteQueue: list.New(),
@@ -89,7 +91,7 @@ func (lobby *GomokuLobby) MatchPlayers() {
 		if ok {
 			log.Println("Matched:", w.PlayerID, b.PlayerID)
 
-			room := NewGomokuRoom(w, b, lobby.LobbyType)
+			room := NewGomokuRoom(w, b, lobby.LobbyType, lobby.DB)
 			if room != nil {
 				lobby.RoomManager.RegisterPlayerToRoom(w.PlayerID, room)
 				lobby.RoomManager.RegisterPlayerToRoom(b.PlayerID, room)

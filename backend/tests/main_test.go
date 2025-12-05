@@ -359,7 +359,12 @@ func TestGetGame(t *testing.T) {
 
 	// Insert game directly through DB layer
 	gameState := CreateTestGomokuGameState()
-	err := gomokudb.InsertGame(s.DB, gameState)
+	err := gomokudb.InsertGame(
+		s.DB, gameState.GameID, 
+		gameState.Players[0].PlayerID, 
+		gameState.Players[1].PlayerID,
+		gameState.ToRow(),
+	)
 	require.NoError(t, err)
 
 	// Auth token
@@ -416,12 +421,22 @@ func TestGetGames(t *testing.T) {
 	playerID := "f06d11d2-e147-45b7-aa29-c2aa5d8e9cc0"
 
 	gameState1 := CreateTestGomokuGameState()
-	err := gomokudb.InsertGame(s.DB, gameState1)
+	err := gomokudb.InsertGame(
+		s.DB, gameState1.GameID, 
+		gameState1.Players[0].PlayerID, 
+		gameState1.Players[1].PlayerID,
+		gameState1.ToRow(),
+	)
 	require.NoError(t, err)
 	
 	gameState2 := CreateTestGomokuGameState()
 	gameState2.GameID = "bbd217b7-1234-4db6-afa1-c92d4afa9f0f"
-	err = gomokudb.InsertGame(s.DB, gameState2)
+	err = gomokudb.InsertGame(
+		s.DB, gameState1.GameID, 
+		gameState2.Players[0].PlayerID, 
+		gameState2.Players[1].PlayerID,
+		gameState2.ToRow(),
+	)
 	require.NoError(t, err)
 
 	// Auth token
