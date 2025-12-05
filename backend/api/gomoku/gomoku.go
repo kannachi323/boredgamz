@@ -13,7 +13,6 @@ import (
 
 func JoinGomokuLobby(lm *core.LobbyManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-        log.Println("New join gomoku lobby request")
         if r.Header.Get("Connection") != "Upgrade" && r.Header.Get("Upgrade") != "websocket" {
 			http.Error(w, "Expected WebSocket upgrade", http.StatusUpgradeRequired)
 			return

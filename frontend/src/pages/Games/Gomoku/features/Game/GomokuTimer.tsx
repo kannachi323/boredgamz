@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Player } from "../pages/Games/Gomoku/GomokuTypes";
-import { useGomokuStore } from "../stores/useGomokuStore";
+import { Player } from "./GomokuTypes";
+import { useGomokuStore } from "@/stores/useGomokuStore";
 
 export function Timer({ player }: { player: Player }) {
   const { gameState } = useGomokuStore();
@@ -14,7 +14,7 @@ export function Timer({ player }: { player: Player }) {
   }, [gameState, player]);
 
   useEffect(() => {
-    if (!gameState || gameState.status.code !== "online") return;
+    if (!gameState || gameState.status?.code !== "online") return;
 
     const interval = setInterval(() => {
       setTime((t) => {

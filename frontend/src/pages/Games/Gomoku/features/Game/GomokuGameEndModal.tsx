@@ -1,18 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGomokuStore } from "../../../stores/useGomokuStore";
+import { useGomokuStore } from "@/stores/useGomokuStore";
 import { X } from "lucide-react";
 
 export function GameEnd() {
-  const { gameState, showGameEndModal, setShowGameEndModal} = useGomokuStore();
+  const { gameState } = useGomokuStore();
+
+  const [showGameEndModal, setShowGameEndModal] = useState(false);
 
   useEffect(() => {
-    if (!gameState || gameState.status.code === "online") return;
+    if (!gameState || gameState.status?.code === "online") return;
     setShowGameEndModal(true)
   
-  }, [gameState?.status.code])
+  }, [gameState?.status?.code])
 
-  if (!gameState || gameState.status.code === "online" || !showGameEndModal) return null;
+  if (!gameState || gameState.status?.code === "online" || !showGameEndModal) return null;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 p-4">
@@ -25,7 +27,7 @@ function GameEndCard({ onClose }: { onClose: () => void }) {
   const { gameState } = useGomokuStore();
   const navigate = useNavigate();
 
-  if (!gameState) return null;
+  if (!gameState || !gameState.status) return null;
 
   let title = "";
   let emoji = "";

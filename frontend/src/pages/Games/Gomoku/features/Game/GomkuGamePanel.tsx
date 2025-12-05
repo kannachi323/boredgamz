@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { Handshake, RefreshCw, Plus, Flag } from "lucide-react";
 import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
 
-import { useGomokuStore } from "../../../stores/useGomokuStore";
+import { useGomokuStore } from "../../../../../stores/useGomokuStore";
 import { Move } from "./GomokuTypes";
 
 

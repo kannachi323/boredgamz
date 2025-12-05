@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { ServerResponse, GameState, Player, ClientRequest, Move, Board, AnalysisState } from '../pages/Games/Gomoku/GomokuTypes.tsx'
+import { ServerResponse, GameState, Player, ClientRequest, Move, Board, AnalysisState, GameStateRow, Stone } from '../pages/Games/Gomoku/features/Game/GomokuTypes.tsx'
 import { convertTime } from '../utils.ts'
 
 interface GomokuStore {
@@ -22,8 +22,9 @@ interface GomokuStore {
   reconnect: () => void
   handler: (payload: ServerResponse) => void
   send: (socket: WebSocket | null, data: ClientRequest) => void
-  setShowGameEndModal: (show: boolean) => void
-
+  refreshPlayers: () => void
+  buildBoardFromMoves: (size: number, moves: Move[], end: number) => Board | null
+  buildGameState: (data: GameStateRow) => GameState | null
 }
 
 
@@ -47,39 +48,41 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
   },
 
   exitAnalysis: () => {
-    const { gameState } = get();
+    const { gameState, buildBoardFromMoves } = get();
     const moves = gameState?.moves || []
     set({
       analysis: {
         moves: moves,
         active: false,
         index: moves.length - 1,
-        board: buildBoardFromMoves(moves, moves.length - 1),
+        board: buildBoardFromMoves(gameState?.board?.size || -1, moves, moves.length - 1),
       }
     });
   },
 
   setAnalysisIndex: (idx: number) => {
-    const { gameState } = get();
+    const { gameState, buildBoardFromMoves } = get();
     const moves = gameState?.moves || []
     set({
       analysis: {
         moves: moves,
         active: true,
         index: idx,
-        board: buildBoardFromMoves(moves, idx),
+        board: buildBoardFromMoves(gameState?.board?.size || -1, moves, idx),
       }
     });
   },
 
   loadGame: async (gameID: string): Promise<void> => {
+    const { buildGameState } = get();
     const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/gomoku/game?gameID=${gameID}`, {
       method: "GET",
       credentials: "include",
     });
     if (res.ok) {
       const data = await res.json();
-      set({ gameState: data as GameState });
+      const newGameState = buildGameState(data as GameStateRow);
+      set({ gameState: newGameState as GameState });
     } else {
       console.error("Failed to fetch game");
     }
@@ -144,33 +147,72 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
     socket.send(JSON.stringify(req));
   },
 
-  setShowGameEndModal: (show: boolean) => set({ showGameEndModal: show }),
+  refreshPlayers: () => {
+    const { gameState, player, setPlayer, setOpponent } = get();
+    if (!gameState) return;
+    const p1 = gameState.players[0];
+    const p2 = gameState.players[1];
+    setPlayer(p1.playerID === player.playerID ? p1 : p2);
+    setOpponent(p1.playerID === player.playerID ? p2 : p1);
+  },
 
+  buildBoardFromMoves: (size: number, moves: Move[], end: number) => {
+    if (size == -1) return null;
+    const stones: Stone[][] = Array.from({ length: size }, () =>
+      Array.from({ length: size }, () => ({ color: null }))
+    );
+
+    let numStones = 0;
+
+    for (let i = 0; i <= end && i < moves.length; i++) {
+      const m = moves[i];
+      stones[m.row][m.col] = { color: m.color };
+      numStones++;
+    }
+    
+    return { stones, size, numStones }
+  },
+
+  buildGameState: (data: GameStateRow) => {
+    const { buildBoardFromMoves } = get();
+    
+    const newBoard = buildBoardFromMoves(data.boardSize, data.moves, data.moves.length - 1);
+    if (!newBoard) { return null }
+
+    console.log(newBoard);
+
+    const newPlayers: Player[] = data.players.map((p) => ({
+      playerID: p.playerID,
+      playerName: p.playerName,
+      color: p.color,
+      playerClock: null,
+    }));
+
+    const winner: Player | null = data.winner && {
+      playerID: data.winner.playerID,
+      playerName: data.winner.playerName,
+      color: data.winner.color,
+      playerClock: null,
+    }
+    
+    const newGameState: GameState = {
+      gameID: data.gameID,
+      board: newBoard,
+      size: data.boardSize,
+      players: newPlayers,
+      turn: "",
+      status: {
+        result: data.result,
+        code: "offline",
+        winner: winner,
+      },
+      lastMove: data.moves.length > 0 ? data.moves[data.moves.length - 1] : null,
+      moves: data.moves,
+    };
+
+    console.log(newGameState);
+
+    return newGameState;
+  },
 
 }));
-
-export function buildBoardFromMoves(
-  moves: Move[],
-  until: number,
-  size: number = 9
-): Board {
-
-  const stones: Board["stones"] = Array.from({ length: size }, () =>
-    Array.from({ length: size }, () => ({ color: null }))
-  );
-
-  let numStones = 0;
-  
-  for (let i = 0; i <= until && i < moves.length; i++) {
-    const m = moves[i];
-
-    stones[m.row][m.col] = { color: m.color };
-    numStones++;
-  }
-
-  return {
-    stones,
-    size,
-    numStones
-  };
-}
