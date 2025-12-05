@@ -1,15 +1,15 @@
 import { useState } from 'react';
 
-import { Message } from '../../pages/Games/Gomoku/GomokuTypes';
+import { ChatMessage } from '../../pages/Games/Gomoku/GomokuTypes'
 
 export function ChatBox({ username }: { username: string }) {
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
 
   return (
     <div className="w-full h-full bg-[#363430] flex flex-col">
       <div className="flex-1 overflow-y-auto p-2 text-white">
         {messages.map((message, idx) => 
-          <p key={idx}>{message.sender}: {message.content}</p>
+          <p key={idx}>{message.data.sender}: {message.data.content}</p>
         )}
       </div>
 
@@ -27,7 +27,14 @@ export function ChatBox({ username }: { username: string }) {
               e.preventDefault();
               const content = e.currentTarget.value.trim();
               if (content !== "") {
-                setMessages(prev => [...prev, { content, sender: username || "Anonymous" }]);
+                setMessages(prev => [
+                ...prev,
+                {
+                  type: "msg",
+                  data: { content: content, sender: username }
+                }
+              ]);
+
                 e.currentTarget.value = "";
                 e.currentTarget.style.height = "auto";
               }
