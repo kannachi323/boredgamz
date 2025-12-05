@@ -8,14 +8,13 @@ type RoomController interface {
 	Close()
 	Broadcast(res []byte)
 	Send(p *Player, res []byte)
-	HandleEvent(req []byte)
+	HandleEvent(req interface{})
 }
 
 type Room struct {
 	RoomID 	  string
 	Players	 	[]*Player
-	Events    chan []byte
-	Timeout   chan []byte
+	Events    chan interface{}
 	GameID    string
 	CloseOnce sync.Once
 }

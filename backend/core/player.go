@@ -33,13 +33,13 @@ type Player struct {
 type PlayerClock struct {
 	Remaining time.Duration `json:"remaining"`
 	IsActive  atomic.Bool   `json:"-"`
-	Timeout      chan []byte `json:"-"`
+	Timeout      chan interface{} `json:"-"`
 }
 
 func NewPlayerClock(remaining time.Duration) *PlayerClock {
 	return &PlayerClock{
 		Remaining: remaining,
-		Timeout:  make(chan []byte, 10),
+		Timeout:  make(chan interface{}, 10),
 	}
 }
 
@@ -66,7 +66,6 @@ func (p *Player) StartPlayer() {
 func (p *Player) ClosePlayer() {
 	p.CloseOnce.Do(func() {
 		p.Disconnected.Store(true)
-		close(p.Clock.Timeout)
 		close(p.Incoming)
 		close(p.Outgoing)
 		p.Conn.Close()

@@ -9,6 +9,12 @@ import (
 	"github.com/google/uuid"
 )
 
+type GomokuEvent struct {
+	Type string
+	PlayerID string
+	Data []byte
+}
+
 type GomokuRoom struct {
 	*core.Room
 	GameState *GomokuGameState
@@ -19,16 +25,15 @@ func NewGomokuRoom(p1, p2 *core.Player, gomokuType string) core.RoomController{
 		Room: &core.Room{
 			RoomID: uuid.New().String(),
 			Players: []*core.Player{p1, p2},
-			Events: make(chan []byte, 100),
-			Timeout: make(chan []byte, 100),
+			Events: make(chan interface{}, 100),
 			GameID: uuid.New().String(),
 		},
 		GameState: NewGomokuGame(gomokuType, p1, p2),
 	}
 
-	//IMPORTANT: Link player timeout to room timeout channel
-	p1.Clock.Timeout = newGomokuRoom.Timeout
-	p2.Clock.Timeout = newGomokuRoom.Timeout
+	//IMPORTANT: Link player timeout to room event channel
+	p1.Clock.Timeout = newGomokuRoom.Events
+	p2.Clock.Timeout = newGomokuRoom.Events
 
 	return newGomokuRoom
 }
@@ -58,6 +63,8 @@ func (room *GomokuRoom) Close() {
 		for _, player := range room.Players {
 			player.ClosePlayer()
 		}
+		close(room.Events)
+		log.Println("Gomoku room closed:", room.RoomID)
 	})
 }
 
@@ -77,12 +84,16 @@ func (room *GomokuRoom) Send(p *core.Player, res []byte) {
 	}
 }
 
-func (room *GomokuRoom) HandleEvent(raw []byte) {
+func (room *GomokuRoom) HandleEvent(raw interface{}) {
 	select {
 	case room.Events <- raw:
 	default:
 	}
 }
+
+////////////////////////////
+//PRIVATE FUNCTIONS
+///////////////////////////
 
 func (room *GomokuRoom) startEventListener() {
 	for raw := range room.Events {
@@ -94,9 +105,7 @@ func (room *GomokuRoom) startEventListener() {
 		case "move":
 			var moveData GomokuMoveData
 			err := json.Unmarshal(req.Data, &moveData)
-			log.Println("RAW DATA:", string(req.Data))
 
-			log.Println(moveData)
 			if err != nil { continue }
 			HandleGomokuMove(room.GameState, moveData.Move.Row, moveData.Move.Col, moveData.Move.Color)
 			
@@ -110,7 +119,6 @@ func (room *GomokuRoom) startEventListener() {
 			if err == nil {
 				room.Broadcast(resBytes)
 			}
-			
 		}
 	}
 }

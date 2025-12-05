@@ -17,6 +17,7 @@ type GomokuGameState struct {
 	GameID   string      `json:"gameID"`
 	Board    *Board      `json:"board"`
 	Players  []*core.Player   `json:"players"`
+	PlayerClocks map[string]*core.PlayerClock `json:"-"`
 	Status   *GomokuGameStatus `json:"status"`
 	LastMove *Move       `json:"lastMove"`
 	Turn     string      `json:"turn"`
@@ -78,12 +79,12 @@ func HandleGomokuMove(serverGameState *GomokuGameState, row int, col int, color 
 	UpdateMoves(serverGameState, move)
     
     if IsGomoku(serverGameState.Board.Stones, move) {
-        UpdateGameStatus(serverGameState, "win", serverGameState.Turn)
+      UpdateGameStatus(serverGameState, "win", serverGameState.Turn)
     } else if IsDraw(serverGameState.Board) {
-        UpdateGameStatus(serverGameState, "draw", "")
+      UpdateGameStatus(serverGameState, "draw", "")
     } else {
-        UpdatePlayerClocks(serverGameState)
-        UpdatePlayerTurn(serverGameState)
+			UpdatePlayerClocks(serverGameState)
+			UpdatePlayerTurn(serverGameState)
     }
 }
 
