@@ -17,6 +17,7 @@ type GomokuGameState struct {
 	GameID   string      `json:"gameID"`
 	Board    *Board      `json:"board"`
 	Players  []*core.Player   `json:"players"`
+	PlayerClocks map[string]*core.PlayerClock `json:"-"`
 	Status   *GomokuGameStatus `json:"status"`
 	LastMove *Move       `json:"lastMove"`
 	Turn     string      `json:"turn"`
@@ -24,15 +25,12 @@ type GomokuGameState struct {
 	Moves	[]*Move     `json:"moves"`
 }
 
-
 func NewGomokuGame(gomokuType string, p1 *core.Player, p2 *core.Player) *GomokuGameState {
 	var turn string
 	if p1.Color == "black" {
 		turn = p1.PlayerID
-		p1.StartClock()
 	} else {
 		turn = p2.PlayerID
-		p2.StartClock()
 	}
 
 	var size int
@@ -65,27 +63,26 @@ func NewGomokuGame(gomokuType string, p1 *core.Player, p2 *core.Player) *GomokuG
 }
 
 /*HANDLERS*/
-func HandleGomokuMove(serverGameState *GomokuGameState, row int, col int, color string) {
-	move := &Move{
-        Row: row,
-        Col: col,
-        Color: color,
+func HandleGomokuMove(gs *GomokuGameState, move *Move) {
+    if err := UpdateLastMove(gs, move); err != nil { return }
+
+    UpdateMoves(gs, move)
+
+    if IsGomoku(gs.Board.Stones, move) {
+        UpdateGameStatus(gs, "win", gs.Turn)
+        return
     }
 
-    err := UpdateLastMove(serverGameState, move)
-	if err != nil { return }
-
-	UpdateMoves(serverGameState, move)
-    
-    if IsGomoku(serverGameState.Board.Stones, move) {
-        UpdateGameStatus(serverGameState, "win", serverGameState.Turn)
-    } else if IsDraw(serverGameState.Board) {
-        UpdateGameStatus(serverGameState, "draw", "")
-    } else {
-        UpdatePlayerClocks(serverGameState)
-        UpdatePlayerTurn(serverGameState)
+    if IsDraw(gs.Board) {
+        UpdateGameStatus(gs, "draw", "")
+        return
     }
+
+    // Switch turn
+    UpdatePlayerTurn(gs)
+
 }
+
 
 /*
 PRIVATE gamestate updaters
@@ -98,23 +95,20 @@ func UpdatePlayerTurn(serverGameState *GomokuGameState) {
 			serverGameState.Turn = serverGameState.Players[0].PlayerID
 	}
 }
-func UpdateLastMove(serverGameState *GomokuGameState, move *Move) error {
 
-	expectedColor := "black"
-	if serverGameState.LastMove != nil {
-		if serverGameState.LastMove.Color == "black" {
-			expectedColor = "white"
-		} else {
-			expectedColor = "black"
-		}
-	}
+func UpdateLastMove(gs *GomokuGameState, move *Move) error {
+	player := GetPlayerByColor(gs, move.Color)
+    if gs.Turn != player.PlayerID {
+        return fmt.Errorf("not your turn")
+    }
 
-	if move == nil || move.Color != expectedColor || !IsValidMove(serverGameState.Board, move) { return fmt.Errorf("invalid move") }
-	
-	AddStoneToBoard(serverGameState.Board, move, &Stone{Color: move.Color})
-	serverGameState.LastMove = move
+    if !IsValidMove(gs.Board, move) {
+        return fmt.Errorf("invalid move")
+    }
 
-	return nil
+    AddStoneToBoard(gs.Board, move, &Stone{Color: move.Color})
+    gs.LastMove = move
+    return nil
 }
 
 func UpdateMoves(serverGameState *GomokuGameState, move *Move) {
@@ -141,12 +135,4 @@ func UpdateGameStatus(gs *GomokuGameState, statusType string, playerID string) {
 			Winner: GetOpponent(gs, GetPlayerByID(gs, playerID).Color),
 		}
 	}
-}
-
-func UpdatePlayerClocks(serverGameState *GomokuGameState) {
-	currentPlayer := GetPlayerByID(serverGameState, serverGameState.Turn)
-	opponentPlayer := GetOpponent(serverGameState, serverGameState.Turn)
-
-	currentPlayer.StopClock()
-	opponentPlayer.StartClock()
 }

@@ -15,11 +15,9 @@ export default function GomokuGame() {
   const { gameID } = useParams();
 
   useEffect(() => {
-    if (!player || !gameState) return;
-
+    if (!gameState) return;
     const p1 = gameState.players[0];
     const p2 = gameState.players[1];
-
     setPlayer(p1.playerID === player.playerID ? p1 : p2);
     setOpponent(p1.playerID === player.playerID ? p2 : p1);
   }, [gameState]);

@@ -1,23 +1,25 @@
 package core
 
-import "sync"
+import (
+	"boredgamz/db"
+	"sync"
+)
 
 type RoomController interface {
-	//Room lifecycle methods
 	Start()
 	Close()
 	Broadcast(res []byte)
 	Send(p *Player, res []byte)
-	HandleEvent(req []byte)
+	HandleEvent(req interface{})
 }
 
 type Room struct {
 	RoomID 	  string
 	Players	 	[]*Player
-	Events    chan []byte
-	Timeout   chan []byte
-	GameID    string
+	Events    chan interface{}
 	CloseOnce sync.Once
+
+	DB *db.Database
 }
 
 type RoomManager struct { 

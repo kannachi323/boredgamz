@@ -17,16 +17,15 @@ type Server struct {
 	DB	*db.Database
 }
 
-
 func CreateServer() *Server {
 	s := &Server{
 		Router: chi.NewRouter(),
-		APIRouter: chi.NewRouter(),
 		LobbyManager: core.NewLobbyManager(),
 		DB: &db.Database{},
 	}
-	
-	s.Router.Mount("/api", s.APIRouter)
+	s.Router.Route("/api", func(r chi.Router) {
+		s.APIRouter = r.(*chi.Mux)
+	})
 
 	s.MountDatabase()
 	s.MountHandlers()

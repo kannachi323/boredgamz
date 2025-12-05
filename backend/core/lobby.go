@@ -7,19 +7,21 @@ lobby will be in charge of matching players quickly
 */
 
 import (
+	"boredgamz/db"
 	"sync"
 )
 
 type LobbyController interface {
 	AddPlayer(player *Player)
-	MatchPlayers() ([]*Player, bool)
 	RemovePlayer(player *Player)
+	MatchPlayers()
 }
 
 type Lobby struct {
 	NumPlayers  int
 	MaxPlayers  int
 	RoomManager *RoomManager
+	DB *db.Database
 }
 
 //IMPORTANT: pass Lobbycore to server so all handlers have access

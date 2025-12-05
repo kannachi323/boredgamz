@@ -5,6 +5,7 @@ import (
 	"boredgamz/middleware"
 	"boredgamz/utils"
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -118,6 +119,8 @@ func LogIn(db *db.Database) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
+
+		log.Println("user logged in with id:", id)
 
 		token, err := utils.GenerateAccessJWT(id)
 
