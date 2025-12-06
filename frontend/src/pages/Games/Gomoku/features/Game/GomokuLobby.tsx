@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useGomokuStore } from "../../../stores/useGomokuStore";
+import { useGomokuStore } from "@/stores/useGomokuStore";
 import { GomokuLobbyOptions } from "./GomokuLobbyOptions";
 import { GomokuLobbyBoards } from "./GomokuLobbyBoards";
 import { GomokuLobbyModes } from "./GomokuLobbyModes";

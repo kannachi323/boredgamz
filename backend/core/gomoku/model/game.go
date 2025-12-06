@@ -8,14 +8,16 @@ type Move struct {
 }
 
 type Player struct {
-    PlayerID  string `json:"player_id"`
-    PlayerName string `json:"player_name"`
+    PlayerID  string `json:"playerID"`
+    PlayerName string `json:"playerName"`
     Color     string `json:"color"`
 }
 
 type GomokuGameStateRow struct {
+    GameID string    `json:"gameID"`
+    BoardSize int       `json:"boardSize"`
+    Players []*Player `json:"players"`
     Moves  []*Move `json:"moves"`
-    Turn   string    `json:"turn"`
     Result string    `json:"result"`
     Winner *Player    `json:"winner,omitempty"`
 }

@@ -1,32 +1,32 @@
 import { useEffect } from "react";
-import { useParams } from "react-router-dom";
 
-import { PlayerBanner } from "../../../components/Banner";
+import { PlayerBanner } from "@/components/Banner";
 import { GamePanel } from "./GomkuGamePanel";
-import { useGomokuStore } from "../../../stores/useGomokuStore";
+import { useGomokuStore } from "@/stores/useGomokuStore";
 import { GomokuBoard } from "./GomokuBoard";
-import { ChatBox } from "../../../features/Chat/ChatBox";
+import { ChatBox } from "../Chat/ChatBox";
 import { GameEnd } from "./GomokuGameEndModal";
-import { Timer } from "../../../components/Timer";
+import { Timer } from "./GomokuTimer";
+import { useParams } from "react-router-dom";
 
 
 export default function GomokuGame() {
-  const { gameState, setPlayer, setOpponent, player, opponent, loadGame } = useGomokuStore();
+  const { gameState,  player, opponent, refreshPlayers, loadGame } = useGomokuStore();
   const { gameID } = useParams();
 
+   /*this is used purely for syncing clients
+    I'm trying to think of a better way to do this
+   */
   useEffect(() => {
-    if (!gameState) return;
-    const p1 = gameState.players[0];
-    const p2 = gameState.players[1];
-    setPlayer(p1.playerID === player.playerID ? p1 : p2);
-    setOpponent(p1.playerID === player.playerID ? p2 : p1);
-  }, [gameState]);
+    refreshPlayers()
+  }, [gameState])
 
+
+  /*load game from db only when status is offline*/
   useEffect(() => {
-    if (!gameID) return;
-    loadGame(gameID)
-    console.log(gameState)
-  }, [gameID])
+    loadGame(gameID || "");
+  }, [])
+  
 
   return (
     <div className="h-[90vh] w-full grid grid-cols-26 gap-6 p-6 bg-[#1b1918] overflow-hidden">

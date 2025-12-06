@@ -298,11 +298,22 @@ func (gs *GomokuGameState) ToRow() *model.GomokuGameStateRow {
 			PlayerName: gs.Status.Winner.PlayerName,
 			Color: gs.Status.Winner.Color,
 		}
-	}	
+	}
+
+	var players []*model.Player
+	for _, p := range gs.Players {
+		players = append(players, &model.Player{
+			PlayerID: p.PlayerID,
+			PlayerName: p.PlayerName,
+			Color: p.Color,
+		})
+	}
 	
     return &model.GomokuGameStateRow{
+		GameID: gs.GameID,
+		BoardSize: gs.Board.Size,
+		Players: players,
         Moves:  moves,
-        Turn:   gs.Turn,
         Result: gs.Status.Result,
         Winner: winner,
     }

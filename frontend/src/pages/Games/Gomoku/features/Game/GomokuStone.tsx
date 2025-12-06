@@ -1,6 +1,6 @@
 import { Stone } from "./GomokuTypes";
-import BLACK from "../../../assets/black.svg"
-import WHITE from "../../../assets/white.svg"
+import BLACK from "@/assets/black.svg"
+import WHITE from "@/assets/white.svg"
 
 export function GomokuStone({ stone, isHovered }: { stone: Stone; isHovered: boolean | null}) {
   if (stone.color) {

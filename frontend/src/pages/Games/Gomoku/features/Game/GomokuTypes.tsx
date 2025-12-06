@@ -24,7 +24,7 @@ export interface GameState {
   turn: string;
   status: GameStatus;
   lastMove: Move | null;
-  moves: [];
+  moves: Move[];
 }
 
 export interface AnalysisState {
@@ -92,6 +92,25 @@ export type ClientRequest =
 export interface ServerResponse {
   type: string
   data: GameState
+}
+
+
+
+//MODELS
+
+export interface PlayerRow {
+  playerID: string;
+  playerName: string;
+  color: string;
+}
+
+export interface GameStateRow {
+  gameID: string;
+  boardSize: number;
+  players: PlayerRow[]
+  moves: Move[];
+  result: "win" | "draw" | "loss";
+  winner: PlayerRow | null;
 }
 
 

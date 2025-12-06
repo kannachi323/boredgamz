@@ -1,8 +1,8 @@
-import { useGomokuStore } from "../../../stores/useGomokuStore"
+import { useGomokuStore } from "@/stores/useGomokuStore"
 
-import SMALL_BOARD from '../../../assets/small-board.jpg'
-import MID_BOARD from '../../../assets/mid-board.jpg'
-import LARGE_BOARD from '../../../assets/large-board.jpg'
+import SMALL_BOARD from '@/assets/small-board.jpg'
+import MID_BOARD from '@/assets/mid-board.jpg'
+import LARGE_BOARD from '@/assets/large-board.jpg'
 
 
 const boards = [

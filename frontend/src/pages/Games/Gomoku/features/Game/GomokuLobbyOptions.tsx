@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-import { useGomokuStore } from "../../../stores/useGomokuStore.ts";
-import { convertTime } from '../../../utils.ts'
-import BLACK from '../../../assets/black.svg'
-import WHITE from '../../../assets/white.svg'
+import { useGomokuStore } from "@/stores/useGomokuStore.ts";
+import { convertTime } from '@/utils.ts'
+import BLACK from '@/assets/black.svg'
+import WHITE from '@/assets/white.svg'
 
 
 export function GomokuLobbyOptions() {

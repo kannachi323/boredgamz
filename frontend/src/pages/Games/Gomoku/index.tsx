@@ -2,11 +2,11 @@ import { useEffect } from "react";
 import { Outlet, RouteObject } from "react-router-dom";
 
 
-import { useAuthStore } from "../../../stores/useAuthStore";
-import { useGomokuStore } from "../../../stores/useGomokuStore";
-import { LoginRedirectModal } from "../../Login/LoginRedirectModal";
-import { GomokuLobby } from "./GomokuLobby";
-import GomokuGame from "./GomokuGame";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useGomokuStore } from "@/stores/useGomokuStore";
+import { LoginRedirectModal } from "@/pages/Login/LoginRedirectModal"
+import { GomokuLobby } from "./features/Game/GomokuLobby";
+import GomokuGame from "./features/Game/GomokuGame";
 
 function Gomoku() {
   const { checkAuth, isAuthenticated } = useAuthStore();
