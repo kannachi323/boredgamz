@@ -6,10 +6,13 @@ import (
 	"boredgamz/db"
 	gomokudb "boredgamz/db/gomoku"
 	"encoding/json"
+	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
 type GomokuGameEvent struct {
@@ -25,9 +28,10 @@ type GomokuTimeoutEvent struct {
 type GomokuRoom struct {
 	*core.Room
 	GameState *GomokuGameState
+	mu sync.Mutex;
 }
 
-func NewGomokuRoom(p1, p2 *core.Player, gomokuType string, db *db.Database) core.RoomController{
+func NewGomokuRoom(p1, p2 *core.Player, name string, db *db.Database) core.RoomController{
 	newGomokuRoom := &GomokuRoom{
 		Room: &core.Room{
 			DB: db,
@@ -35,7 +39,7 @@ func NewGomokuRoom(p1, p2 *core.Player, gomokuType string, db *db.Database) core
 			Players: []*core.Player{p1, p2},
 			Events: make(chan interface{}, 100),
 		},
-		GameState: NewGomokuGame(gomokuType, p1, p2),
+		GameState: NewGomokuGame(name, p1, p2),
 	}
 
 	return newGomokuRoom
@@ -62,6 +66,23 @@ func (room *GomokuRoom) Start() {
 		log.Println("Broadcasting initial game state for room:", room.RoomID)
 		room.Broadcast(resBytes)
 	}
+
+	//make initial save of game state
+	go func() {
+		err := gomokudb.InsertGame(
+			room.DB,
+			room.GameState.GameID,
+			room.GameState.Players[0].PlayerID,
+			room.GameState.Players[1].PlayerID,
+			room.GameState.ToRow(),
+		)
+		if err != nil {
+			log.Println("Error saving finished gomoku game to database:", err)
+		} else {
+			log.Println("Finished gomoku game saved to database:", room.GameState.GameID)
+		}
+	}()
+
 }
 
 
@@ -317,4 +338,48 @@ func (gs *GomokuGameState) ToRow() *model.GomokuGameStateRow {
         Result: gs.Status.Result,
         Winner: winner,
     }
+}
+
+////////////////////////////
+//CONNECTION MANAGEMENT
+///////////////////////////
+func (room *GomokuRoom) ReconnectPlayer(playerID string, conn *websocket.Conn) error {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+	
+	var player *core.Player
+	for _, p := range room.Players {
+		if p.PlayerID == playerID {
+			player = p
+			break
+		}
+	}
+	
+	if player == nil {
+		return fmt.Errorf("player not found in room")
+	}
+	
+	log.Println("Reconnecting player:", playerID, "to room:", room.RoomID)
+	player.ReconnectPlayer(conn)
+	
+	resData, err := json.Marshal(room.GameState)
+	if err != nil {
+		return err
+	}
+	
+	res := &GomokuServerResponse{
+		Type: "update",
+		Data: resData,
+	}
+	
+	resBytes, err := json.Marshal(res)
+	if err != nil {
+		return err
+	}
+	
+	// Send game state to reconnected player
+	room.Send(player, resBytes)
+	
+	log.Println("Game state replayed to:", playerID)
+	return nil
 }

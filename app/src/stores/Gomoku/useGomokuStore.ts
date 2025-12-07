@@ -1,16 +1,19 @@
 import { create } from 'zustand'
-import { ServerResponse, GameState, Player, ClientRequest, Move, Board, AnalysisState, GameStateRow, Stone } from '../pages/Games/Gomoku/features/Game/GomokuTypes.tsx'
-import { convertTime } from '../utils.ts'
+import { ServerResponse, GameState, Player, ClientRequest, Move, Board, AnalysisState, GameStateRow, Stone, LobbyRequest, ReconnectRequest } from '../../pages/Games/Gomoku/types.tsx'
+import { createPlayer, createLobbyRequest } from './utils.ts'
 
 interface GomokuStore {
+  lobbyRequest: LobbyRequest
   gameState: GameState | null
   conn: WebSocket | null
   player: Player
   opponent: Player
   analysis: AnalysisState
   showGameEndModal: boolean
+ 
 
 
+  setLobbyRequest: (lobbyRequest : LobbyRequest) => void
   setGameState: (gameState: GameState) => void
   setPlayer: (player: Player) => void
   setOpponent: (opponent: Player) => void
@@ -18,8 +21,9 @@ interface GomokuStore {
   exitAnalysis: () => void
   setAnalysisIndex: (idx: number) => void
   loadGame: (gameID: string) => Promise<void>
-  setConnection: (lobbyType: string, player: Player, onMessage : (data: ServerResponse) => void) => void
-  reconnect: () => void
+  setConnection: (lobbyRequest: LobbyRequest) => void
+  closeConnection: () => void;
+  reconnect: (gameID: string, playerID: string) => void
   handler: (payload: ServerResponse) => void
   send: (socket: WebSocket | null, data: ClientRequest) => void
   refreshPlayers: () => void
@@ -29,18 +33,19 @@ interface GomokuStore {
 
 
 export const useGomokuStore = create<GomokuStore>((set, get) => ({
+  lobbyRequest: createLobbyRequest(),
   gameState: null,
   conn: null,
-  player: { playerID: '', playerName: '', color: 'black', playerClock: { remaining: convertTime(5, "minutes", "nanoseconds") } },
-  opponent: { playerID: '', playerName: '', color: 'black', playerClock: { remaining: convertTime(5, "minutes", "nanoseconds")} },
+  player: createPlayer(),
+  opponent: createPlayer(),
   analysis: { moves: [], board: null, active: false, index: 0 },
   showGameEndModal: false,
 
+  setLobbyRequest: (lobbyRequest : LobbyRequest) => set({ lobbyRequest }),
   setGameState: (gameState: GameState) => set({ gameState }),
   setPlayer: (player: Player) => set({ player }),
   setOpponent: (opponent: Player) => set({ opponent }),
 
-  
 
   startAnalysis: () => {
     const { setAnalysisIndex } = get();
@@ -88,50 +93,77 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
     }
   },
 
-  setConnection: (lobbyType, player, onMessage) => {
-    const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/join-gomoku-lobby`);
-
-    socket.onopen = () => {
-      socket.send(JSON.stringify({
-        type: "lobby",
-        data: {
-          lobbyType: lobbyType,
-          player: player,
-        }
-      }));
-    };
-
-    socket.onmessage = (event) => {
-      const payload = JSON.parse(event.data);
-      console.log(payload);
-      onMessage(payload);
+  setConnection: (lobbyRequest) => {
+    const oldConn = get().conn;
+    if (oldConn && oldConn.readyState !== WebSocket.CLOSED) {
+        oldConn.close(1000);
     }
-
-    socket.onerror = () => {
-      //TODO: show popup that shows error status
+    const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/join-gomoku-lobby`);
+    socket.onopen = () => {
+        console.log("WebSocket connected");
+        socket.send(JSON.stringify(lobbyRequest));
     };
-
-    socket.onclose = () => {
-      //TODO: show popup that signals end of game
+    socket.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+        console.log(payload);
+        get().handler(payload);
+    };
+    socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+    };
+    socket.onclose = (event) => {
+      console.log("WebSocket closed:", event.code, event.reason);
+      set({ conn: null });
     };
     
-    set({ conn: socket })
+    set({ conn: socket });
   },
-  reconnect: () => {
-    const { conn, player, gameState } = get();
-    if (conn && gameState) {
-      conn.send(JSON.stringify({
-        type: "reconnect",
-        data: {
-          player: player,
-          gameID: gameState.gameID,
-        }
-      }));
+  closeConnection: () => {
+    const conn = get().conn;
+    if (!conn) return;
+    
+    if (conn.readyState === WebSocket.OPEN || conn.readyState === WebSocket.CONNECTING) {
+        conn.close(1000, "User cancelled");
+    } else {
+        set({ conn: null });
     }
   },
+  reconnect: (gameID: string, playerID: string) => {
+    if (get().conn && get().conn!.readyState !== WebSocket.CLOSED) { return }
+    console.log("reconnecting to game:", gameID, "as player:", playerID);
+    const reconnectRequest : ReconnectRequest = {
+      type: "reconnect",
+      data: {
+        playerID: playerID,
+        gameID: gameID,
+      }
+    };
+    const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/reconnect-gomoku-room`);
+    socket.onopen = () => {
+      console.log("WebSocket connected");
+      socket.send(JSON.stringify(reconnectRequest));
+    };
+    socket.onmessage = (event) => {
+        const payload = JSON.parse(event.data);
+        console.log(payload);
+        get().handler(payload);
+    };
+    socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+    };
+    socket.onclose = (event) => {
+      console.log("WebSocket closed:", event.code, event.reason);
+      set({ conn: null });
+    };
+    
+    set({ conn: socket });
+    
+  },
+
   handler: (payload : ServerResponse) => {
     switch (payload.type) {
       case 'update':{
+        console.log(payload);
         set({ gameState: payload.data});
         break;
       }

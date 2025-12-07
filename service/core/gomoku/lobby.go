@@ -7,49 +7,61 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 type GomokuLobby struct {
 	*core.Lobby
-	GomokuType string
 	WhiteQueue *list.List
 	BlackQueue *list.List
-	PlayerMap  map[*core.Player]*GomokuLobbySlot
-	LobbyType string
-	mu sync.RWMutex
+	PlayerSlot  map[*core.Player]*GomokuLobbySlot
+
+	Mu     sync.Mutex
+	wakeup chan struct{}           
 }
 
 type GomokuLobbySlot struct {
 	Element *list.Element
-	Queue *list.List
+	Queue   *list.List
 }
 
-func NewGomokuLobby(maxPlayers int, gomokuType string, db *db.Database) core.LobbyController {
+func NewGomokuLobby(maxPlayers int, name string, db *db.Database) core.LobbyController {
 	gomokuLobby := &GomokuLobby{
 		Lobby: &core.Lobby{
+			LobbyName: name,
 			NumPlayers: 0,
 			MaxPlayers: maxPlayers,
 			RoomManager: core.NewRoomManager(),
 			DB: db,
 		},
-		GomokuType: gomokuType,
 		WhiteQueue: list.New(),
 		BlackQueue: list.New(),
-		LobbyType: gomokuType,
-		PlayerMap: make(map[*core.Player]*GomokuLobbySlot),
+		PlayerSlot: make(map[*core.Player]*GomokuLobbySlot),
+		wakeup:    make(chan struct{}, 1),
 	}
-	
+
+	// start matcher goroutine
 	go gomokuLobby.MatchPlayers()
 
 	return gomokuLobby
 }
 
 func (lobby *GomokuLobby) AddPlayer(player *core.Player) {
-	lobby.mu.Lock()
-	defer lobby.mu.Unlock()
+	lobby.Mu.Lock()
+	defer lobby.Mu.Unlock()
 
-	if lobby.NumPlayers >= lobby.MaxPlayers { return }
-	if _, exists := lobby.PlayerMap[player]; exists { return }
+	if !isPlayerConnected(player) {
+        log.Println("Player disconnected, not adding to queue:", player.PlayerID)
+        return
+    }
+
+	if lobby.NumPlayers >= lobby.MaxPlayers {
+		return
+	}
+	if _, exists := lobby.PlayerSlot[player]; exists {
+		return
+	}
 
 	var elem *list.Element
 	var queue *list.List
@@ -65,89 +77,115 @@ func (lobby *GomokuLobby) AddPlayer(player *core.Player) {
 	default:
 		return
 	}
-	lobby.PlayerMap[player] = &GomokuLobbySlot{
+	lobby.PlayerSlot[player] = &GomokuLobbySlot{
 		Element: elem,
-		Queue: queue,
+		Queue:   queue,
 	}
+
 	lobby.NumPlayers++
+
+	log.Println(lobby.WhiteQueue)
+	log.Println(lobby.BlackQueue)
+
+	select {
+	case lobby.wakeup <- struct{}{}:
+	default:
+	}
 }
 
 func (lobby *GomokuLobby) RemovePlayer(player *core.Player) {
-	lobby.mu.Lock()
-	defer lobby.mu.Unlock()
+	lobby.Mu.Lock()
+	defer lobby.Mu.Unlock()
 
-	slot, ok := lobby.PlayerMap[player]
-	if !ok { return }
-
-	slot.Queue.Remove(slot.Element)
-	delete(lobby.PlayerMap, player)
-	lobby.NumPlayers--
+	lobby.removePlayer(player)
 }
 
+func (lobby* GomokuLobby) removePlayer(player *core.Player) {
+	slot, ok := lobby.PlayerSlot[player]
+	if !ok {
+		return
+	}
+
+	if slot.Element != nil && slot.Queue != nil {
+		slot.Queue.Remove(slot.Element)
+	}
+	delete(lobby.PlayerSlot, player)
+	
+	if lobby.NumPlayers > 0 {
+		lobby.NumPlayers--
+	}
+	log.Println("removed " + player.PlayerID)
+	select {
+	case lobby.wakeup <- struct{}{}:
+	default:
+	}
+}
 
 func (lobby *GomokuLobby) MatchPlayers() {
 	for {
-		w, b, ok := lobby.tryMatch()
-		if ok {
+		<-lobby.wakeup
+		for {
+			w, b, ok := lobby.tryMatch()
+			if !ok {
+				break
+			}
+
 			log.Println("Matched:", w.PlayerID, b.PlayerID)
 
-			room := NewGomokuRoom(w, b, lobby.LobbyType, lobby.DB)
-			if room != nil {
-				lobby.RoomManager.RegisterPlayerToRoom(w.PlayerID, room)
-				lobby.RoomManager.RegisterPlayerToRoom(b.PlayerID, room)
-				w.StartPlayer()
-				b.StartPlayer()
+			go func(wp, bp *core.Player) {
+				room := NewGomokuRoom(wp, bp, lobby.LobbyName, lobby.DB)
+				if room == nil {
+					return
+				}
+				lobby.RoomManager.RegisterPlayerToRoom(wp.PlayerID, room)
+				lobby.RoomManager.RegisterPlayerToRoom(bp.PlayerID, room)
 				room.Start()
-			}
+			}(w, b)
 		}
-
-		// Nothing to match — avoid busy spinning
-		time.Sleep(100 * time.Millisecond)
 	}
 }
 
 
-//Private logic
 func (lobby *GomokuLobby) tryMatch() (*core.Player, *core.Player, bool) {
-    lobby.mu.Lock()
-    defer lobby.mu.Unlock()
+    lobby.Mu.Lock()
+    defer lobby.Mu.Unlock()
 
     for lobby.WhiteQueue.Len() > 0 && lobby.BlackQueue.Len() > 0 {
+        wElem := lobby.WhiteQueue.Front()
+        bElem := lobby.BlackQueue.Front()
+		if (wElem == nil || bElem == nil) { continue }
 
-        w := lobby.WhiteQueue.Front().Value.(*core.Player)
-        b := lobby.BlackQueue.Front().Value.(*core.Player)
+        w := wElem.Value.(*core.Player)
+        b := bElem.Value.(*core.Player)
 
-        if w.Conn == nil {
-            lobby.WhiteQueue.Remove(lobby.WhiteQueue.Front())
-            delete(lobby.PlayerMap, w)
-            lobby.NumPlayers--
-            continue
-        }
-        if b.Conn == nil {
-            lobby.BlackQueue.Remove(lobby.BlackQueue.Front())
-            delete(lobby.PlayerMap, b)
-            lobby.NumPlayers--
-            continue
-        }
-        if w.PlayerID == b.PlayerID {
-            // remove both if corrupted
-            lobby.WhiteQueue.Remove(lobby.WhiteQueue.Front())
-            lobby.BlackQueue.Remove(lobby.BlackQueue.Front())
-            delete(lobby.PlayerMap, w)
-            delete(lobby.PlayerMap, b)
-            lobby.NumPlayers -= 2
-            continue
-        }
+		if !isPlayerConnected(w) {
+			lobby.removePlayer(w)
+			continue
+		}
+		if !isPlayerConnected(b) {
+			lobby.removePlayer(b)
+			continue
+		}
+		if w.PlayerID == b.PlayerID {
+			lobby.removePlayer(w)
+			lobby.removePlayer(b)
+			continue
+		}
 
-        // VALID MATCH — remove from queues here under lock
-        lobby.WhiteQueue.Remove(lobby.WhiteQueue.Front())
-        lobby.BlackQueue.Remove(lobby.BlackQueue.Front())
-        delete(lobby.PlayerMap, w)
-        delete(lobby.PlayerMap, b)
-        lobby.NumPlayers -= 2
+		lobby.removePlayer(w)
+		lobby.removePlayer(b)
 
         return w, b, true
     }
 
     return nil, nil, false
+}
+
+func isPlayerConnected(player *core.Player) bool {
+    err := player.Conn.WriteControl(
+        websocket.PingMessage,
+        []byte{},
+        time.Now().Add(time.Second),
+    )
+    return err == nil
 }

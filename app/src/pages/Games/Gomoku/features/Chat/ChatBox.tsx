@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { ChatMessage } from '../Game/GomokuTypes'
+import { ChatMessage } from '../../types'
 
 export function ChatBox({ username }: { username: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([])

@@ -18,6 +18,7 @@ type LobbyController interface {
 }
 
 type Lobby struct {
+	LobbyName string
 	NumPlayers  int
 	MaxPlayers  int
 	RoomManager *RoomManager

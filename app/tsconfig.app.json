@@ -25,7 +25,8 @@
     /* Paths */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@Gomoku/*": ["src/pages/Games/Gomoku/*"],
     }
   },
   "include": ["src"]

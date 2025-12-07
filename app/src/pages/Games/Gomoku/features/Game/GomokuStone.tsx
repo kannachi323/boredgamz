@@ -1,4 +1,4 @@
-import { Stone } from "./GomokuTypes";
+import { Stone } from "../../types";
 import BLACK from "@/assets/black.svg"
 import WHITE from "@/assets/white.svg"
 

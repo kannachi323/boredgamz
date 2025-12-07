@@ -7,11 +7,8 @@ export function GomokuModeModal({
 }) {
 
   function renderContent() {
+    console.log(mode);
     switch (mode) {
-      case "casual":
-        return <BotModeContent onClose={onClose} />;
-      case "ranked":
-        return <BotModeContent onClose={onClose} />;
       case "custom":
         return <BotModeContent onClose={onClose} />;
       case "bots":

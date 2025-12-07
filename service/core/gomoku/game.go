@@ -25,7 +25,7 @@ type GomokuGameState struct {
 	Moves	[]*Move     `json:"moves"`
 }
 
-func NewGomokuGame(gomokuType string, p1 *core.Player, p2 *core.Player) *GomokuGameState {
+func NewGomokuGame(name string, p1 *core.Player, p2 *core.Player) *GomokuGameState {
 	var turn string
 	if p1.Color == "black" {
 		turn = p1.PlayerID
@@ -34,7 +34,7 @@ func NewGomokuGame(gomokuType string, p1 *core.Player, p2 *core.Player) *GomokuG
 	}
 
 	var size int
-	switch gomokuType {
+	switch name {
 	case "19x19":
 		size = 19
 	case "15x15":

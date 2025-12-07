@@ -3,9 +3,9 @@ import { Outlet, RouteObject } from "react-router-dom";
 
 
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useGomokuStore } from "@/stores/useGomokuStore";
+import { useGomokuStore } from "@/stores/Gomoku/useGomokuStore";
 import { LoginRedirectModal } from "@/pages/Login/LoginRedirectModal"
-import { GomokuLobby } from "./features/Game/GomokuLobby";
+import { GomokuLobby } from "./features/Lobby/GomokuLobby";
 import GomokuGame from "./features/Game/GomokuGame";
 
 function Gomoku() {

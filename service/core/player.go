@@ -34,7 +34,20 @@ type PlayerClock struct {
 	Remaining time.Duration `json:"remaining"`
 }
 
-func NewPlayerClock(remaining time.Duration) *PlayerClock {
+func NewPlayerClock(timeControl string) *PlayerClock {
+	var remaining time.Duration
+	switch (timeControl) {
+		case "Rapid":
+			remaining = 300000000000; 
+		case "Blitz":
+			remaining = 180000000000;
+		case "Bullet":
+			remaining = 60000000000;
+		case "Hyperbullet":
+			remaining = 30000000000;
+		default:
+			remaining = 300000000000;
+	}
 	return &PlayerClock{
 		Remaining: remaining,
 	}
@@ -52,6 +65,11 @@ func NewPlayer(playerID, playerName, color string, clock *PlayerClock, conn *web
 		Disconnected: atomic.Bool{},
 		CloseOnce:   sync.Once{},
 	}
+}
+
+func (p *Player) ReconnectPlayer(conn *websocket.Conn) {
+	p.Disconnected.Store(false)
+	p.Conn = conn
 }
 
 func (p *Player) StartPlayer() {

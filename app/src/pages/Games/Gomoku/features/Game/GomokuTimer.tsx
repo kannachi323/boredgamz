@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Player } from "./GomokuTypes";
-import { useGomokuStore } from "@/stores/useGomokuStore";
+import { Player } from "../../types";
+import { useGomokuStore } from "@/stores/Gomoku/useGomokuStore";
 
 export function Timer({ player }: { player: Player }) {
   const { gameState } = useGomokuStore();
@@ -10,8 +10,9 @@ export function Timer({ player }: { player: Player }) {
     if (!player?.playerClock) return;
 
     const serverSeconds = Math.floor(player.playerClock.remaining / 1e9);
+    console.log("changed server seconds to ", serverSeconds, " for ", player)
     setTime(serverSeconds)
-  }, [gameState, player]);
+  }, [gameState]);
 
   useEffect(() => {
     if (!gameState || gameState.status?.code !== "online") return;
@@ -40,7 +41,7 @@ export function Timer({ player }: { player: Player }) {
   return (
     <div
       className={`flex justify-center items-center rounded-lg transition-colors duration-300
-        ${isActive ? "text-[#C3B299]" : " text-white"}`
+        ${isActive ? "text-white" : " text-[#C3B299]"}`
       }
     >
       <b className="text-3xl">{formatTimer(time)}</b>

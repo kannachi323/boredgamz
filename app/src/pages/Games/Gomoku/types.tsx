@@ -71,8 +71,20 @@ export interface ChatMessage {
 export interface LobbyRequest {
   type: "lobby"
   data: {
-    lobbyType: string
-    player: Player
+    name: string
+    timeControl: string;
+    mode: string 
+    playerID: string;
+    playerName: string;
+    playerColor: string;
+  }
+}
+
+export interface ReconnectRequest {
+  type: "reconnect"
+  data: {
+    gameID: string
+    playerID: string
   }
 }
 
@@ -86,6 +98,7 @@ export interface MoveRequest {
 export type ClientRequest = 
   | MoveRequest
   | LobbyRequest
+  | ReconnectRequest
 
 
 //IMPORTANT: server always returns gamestate

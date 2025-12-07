@@ -1,3 +1,4 @@
+import { LobbyRequest, Player } from "@/pages/Games/Gomoku/types";
 
 const UNITS_IN_SECONDS: {[key: string]: number} = {
     'nanoseconds': 1e-9,
@@ -20,4 +21,27 @@ export function convertTime(val: number, unit1: string, unit2: string) : number 
     const convertedVal = valInSeconds / factor2;
 
     return convertedVal;
+}
+
+export function createPlayer() : Player {
+    return {
+        playerID: '',
+        playerName: '',
+        color: 'black',
+        playerClock: { remaining: 0 },
+    }
+}
+
+export function createLobbyRequest() : LobbyRequest {
+    return {
+        type: "lobby",
+        data: {
+            playerName: "",
+            playerID: "",
+            playerColor: "black",
+            mode: "casual",
+            timeControl: "Rapid",
+            name: "9x9",
+        }
+    }
 }

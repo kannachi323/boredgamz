@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@Gomoku': path.resolve(__dirname, './src/pages/Games/Gomoku'),
     },
   },
 })

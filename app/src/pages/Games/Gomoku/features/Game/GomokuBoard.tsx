@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { GomokuStone } from "./GomokuStone";
-import { useGomokuStore } from "@/stores/useGomokuStore"
+import { useGomokuStore } from "@/stores/Gomoku/useGomokuStore"
 import SMALL_BOARD from "@/assets/small-board.jpg"
-import { Move } from "./GomokuTypes";
+import { Move } from "../../types";
 
 export function GomokuBoard() {
   const { gameState, send, conn, player, analysis } = useGomokuStore();
@@ -10,8 +10,6 @@ export function GomokuBoard() {
   const [hoveredIndex, setHoveredIndex] = useState<[number, number] | null>(null);
 
   if (!gameState || !gameState.board) {
-    console.log(gameState);
-    console.log("one was bored")
     return null;
   }
 
@@ -25,8 +23,6 @@ export function GomokuBoard() {
   }
 
   const board = analysis.active ? analysis.board : gameState.board
-  console.log(analysis.active, board)
-
   return (
     <div className="flex justify-center h-full w-full relative">
       <img src={SMALL_BOARD} alt="gomoku board" className="absolute h-full w-full z-0" />
