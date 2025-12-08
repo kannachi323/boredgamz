@@ -44,8 +44,8 @@ func JoinGomokuLobby(lm *core.LobbyManager) http.HandlerFunc {
             log.Println("Invalid join message data:", err)
             return
         }
-       
-        lobbyController, ok := lm.GetLobby(reqBody.Name)
+        
+        lobbyController, ok := lm.GetLobby(gomoku.GetGomokuLobbyID(reqBody.Name, reqBody.Mode))
 		if !ok {
 			log.Println("Lobby not found:", reqBody.Name)
 			return
@@ -107,13 +107,10 @@ func ReconnectToGomokuRoom(lm *core.LobbyManager, db *db.Database) http.HandlerF
             return
         }
 
-        gameStateRow, _ := gomokudb.GetGameByID(db, reqBody.GameID)
-
-        name := gomoku.GetSimpleLobbyIdentifier(gameStateRow.BoardSize)
-
-        lobbyController, ok := lm.GetLobby(name)
+    
+        lobbyController, ok := lm.GetLobby(reqBody.LobbyID)
 		if !ok {
-			log.Println("Lobby not found:", name)
+			log.Println("Lobby not found:", reqBody.LobbyID)
 			return
 		}
 
@@ -126,14 +123,13 @@ func ReconnectToGomokuRoom(lm *core.LobbyManager, db *db.Database) http.HandlerF
     
         roomController, ok := gomokuLobby.RoomManager.GetPlayerRoom(reqBody.PlayerID)
         if !ok { 
-            log.Println("not a valid gomoku room")
+            log.Println("player not found")
             return 
         }
 
-       
         room, ok := roomController.(*gomoku.GomokuRoom)
         if !ok { 
-            log.Println("not a valid gomoku lobby")
+            log.Println("not a valid gomoku room")
             return 
         }
 

@@ -26,7 +26,7 @@ export function GomokuLobby() {
     if (gameState?.gameID && gameState?.status.code === "online") {
       const timer = window.setTimeout(() => {
         setIsSearching(false); 
-        navigate(`/games/gomoku/${gameState.gameID}`);
+        navigate(`/games/gomoku/gomoku-${lobbyRequest.data.mode}-${lobbyRequest.data.name}`);
       }, 2000);
       return () => clearTimeout(timer);
     }

@@ -2,31 +2,39 @@ import { useEffect, useState } from "react";
 import { Player } from "../../types";
 import { useGomokuStore } from "@/stores/Gomoku/useGomokuStore";
 
-export function Timer({ player }: { player: Player }) {
+export function GomokuTimer({ player }: { player: Player }) {
+  // Initialize with the prop value to avoid a "0:00" flash
+  const [time, setTime] = useState(() => 
+    player?.playerClock ? Math.floor(player.playerClock.remaining / 1e9) : 0
+  );
+  
   const { gameState } = useGomokuStore();
-  const [time, setTime] = useState(0);
 
+  // 1. Sync Effect: Updates local time when Server sends a new GameState
   useEffect(() => {
-    if (!player?.playerClock) return;
+    if (!gameState || !player) return;
 
-    const serverSeconds = Math.floor(player.playerClock.remaining / 1e9);
-    console.log("changed server seconds to ", serverSeconds, " for ", player)
-    setTime(serverSeconds)
-  }, [gameState]);
+    // CRITICAL FIX: Find the player in the NEW gameState. 
+    // Do not trust the 'player' prop to be up-to-date inside this effect.
+    const freshPlayer = gameState.players.find((p) => p.playerID === player.playerID);
 
+    if (freshPlayer?.playerClock) {
+      const serverSeconds = Math.floor(freshPlayer.playerClock.remaining / 1e9);
+      setTime(serverSeconds);
+    }
+  }, [gameState, player.playerID]); // Depend on ID, not the whole player object
+
+  // 2. Countdown Effect: Ticks down locally every second
   useEffect(() => {
     if (!gameState || gameState.status?.code !== "online") return;
+    if (gameState.turn !== player.playerID) return;
 
     const interval = setInterval(() => {
-      setTime((t) => {
-        if (gameState.turn !== player.playerID) return t;
-
-        return Math.max(0, t - 1);
-      });
+      setTime((t) => Math.max(0, t - 1));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [gameState, player.playerID]);
+  }, [gameState?.status?.code, gameState?.turn, player.playerID]);
 
   if (!player?.playerClock) return null;
 
@@ -41,7 +49,7 @@ export function Timer({ player }: { player: Player }) {
   return (
     <div
       className={`flex justify-center items-center rounded-lg transition-colors duration-300
-        ${isActive ? "text-white" : " text-[#C3B299]"}`
+        ${isActive ? "text-white" : "text-[#C3B299]"}`
       }
     >
       <b className="text-3xl">{formatTimer(time)}</b>

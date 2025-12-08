@@ -23,9 +23,9 @@ interface GomokuStore {
   loadGame: (gameID: string) => Promise<void>
   setConnection: (lobbyRequest: LobbyRequest) => void
   closeConnection: () => void;
-  reconnect: (gameID: string, playerID: string) => void
+  reconnect: (lobbyID: string, playerID: string) => void
   handler: (payload: ServerResponse) => void
-  send: (socket: WebSocket | null, data: ClientRequest) => void
+  send: (data: ClientRequest) => void
   refreshPlayers: () => void
   buildBoardFromMoves: (size: number, moves: Move[], end: number) => Board | null
   buildGameState: (data: GameStateRow) => GameState | null
@@ -128,14 +128,14 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
         set({ conn: null });
     }
   },
-  reconnect: (gameID: string, playerID: string) => {
+  reconnect: (lobbyID: string, playerID: string) => {
     if (get().conn && get().conn!.readyState !== WebSocket.CLOSED) { return }
-    console.log("reconnecting to game:", gameID, "as player:", playerID);
+    console.log("reconnecting to lobby:", lobbyID, "as player:", playerID);
     const reconnectRequest : ReconnectRequest = {
       type: "reconnect",
       data: {
         playerID: playerID,
-        gameID: gameID,
+        lobbyID: lobbyID,
       }
     };
     const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/reconnect-gomoku-room`);
@@ -174,7 +174,8 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
     }
   },
 
-  send: (socket: WebSocket | null, req: ClientRequest) => {
+  send: (req: ClientRequest) => {
+    const socket = get().conn;
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
     socket.send(JSON.stringify(req));
   },
