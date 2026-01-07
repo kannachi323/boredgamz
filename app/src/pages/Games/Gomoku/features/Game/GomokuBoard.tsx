@@ -5,7 +5,7 @@ import SMALL_BOARD from "@/assets/small-board.jpg"
 import { Move } from "../../types";
 
 export function GomokuBoard() {
-  const { gameState, send, conn, player, analysis } = useGomokuStore();
+  const { gameState, send, player, analysis } = useGomokuStore();
 
   const [hoveredIndex, setHoveredIndex] = useState<[number, number] | null>(null);
 
@@ -19,7 +19,7 @@ export function GomokuBoard() {
       row: row,
       col: col
     }
-    send(conn, {type: "move", data: {move: move}}, )
+    send({type: "move", data: {move: move}}, )
   }
 
   const board = analysis.active ? analysis.board : gameState.board

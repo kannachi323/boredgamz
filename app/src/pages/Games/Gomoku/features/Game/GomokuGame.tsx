@@ -6,14 +6,15 @@ import { useGomokuStore } from "@/stores/Gomoku/useGomokuStore";
 import { GomokuBoard } from "./GomokuBoard";
 import { ChatBox } from "../Chat/ChatBox";
 import { GameEnd } from "./GomokuGameEndModal";
-import { Timer } from "./GomokuTimer";
+import { GomokuTimer } from "./GomokuTimer";
 import { useParams } from "react-router-dom";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 export default function GomokuGame() {
   const { gameState, player, opponent, refreshPlayers, reconnect, conn } = useGomokuStore();
   const { user } = useAuthStore();
-  const { gameID } = useParams();
+  const { lobbyID } = useParams();
+  
    /*this is used purely for syncing clients
     I'm trying to think of a better way to do this
    */
@@ -22,8 +23,8 @@ export default function GomokuGame() {
   }, [gameState])
 
   useEffect(() => {
-    if (conn != null || gameID == null || !user) return
-    reconnect(gameID, user.id)
+    if (conn != null || !user || !lobbyID) { return }
+    reconnect(lobbyID, user.id)
   }, [])
   
 
@@ -36,7 +37,7 @@ export default function GomokuGame() {
         {/* Opponent Info — FIXED HEIGHT */}
         <div className="bg-[#302e2e] h-20 p-3 rounded-xl flex flex-row items-center justify-between border border-[#1b1918]">
           <PlayerBanner player={opponent} />
-          <Timer player={opponent} />
+          <GomokuTimer player={opponent} />
         </div>
 
         {/* Game Panel — FLEXES, CAN SCROLL INSIDE */}
@@ -47,7 +48,7 @@ export default function GomokuGame() {
         {/* Player Info — FIXED HEIGHT */}
         <div className="bg-[#302e2e] h-20 p-3 rounded-xl flex flex-row items-center justify-between border border-[#1b1918]">
           <PlayerBanner player={player} />
-          <Timer player={player} />
+          <GomokuTimer player={player} />
         </div>
 
       </section>

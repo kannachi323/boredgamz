@@ -83,7 +83,7 @@ export interface LobbyRequest {
 export interface ReconnectRequest {
   type: "reconnect"
   data: {
-    gameID: string
+    lobbyID: string
     playerID: string
   }
 }

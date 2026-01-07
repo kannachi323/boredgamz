@@ -32,10 +32,6 @@ func GetPlayerByID(gs *GomokuGameState, playerID string) *core.Player {
 	return nil
 }
 
-func GetLobbyIdentifier(boardSize int, gameMode string, timeControl string) string {
-    return fmt.Sprintf("%s-%dx%d-%s", gameMode, boardSize, boardSize, timeControl)
-}
-
-func GetSimpleLobbyIdentifier(boardSize int) string {
-	return fmt.Sprintf("%dx%d", boardSize, boardSize)
+func GetGomokuLobbyID(name string, mode string) string {
+  return fmt.Sprintf("gomoku-%s-%s", mode, name)
 }

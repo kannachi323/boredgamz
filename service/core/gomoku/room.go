@@ -87,7 +87,6 @@ func (room *GomokuRoom) Start() {
 
 
 func (room *GomokuRoom) Close() {
-	
 	for _, player := range room.Players {
 		player.ClosePlayer()
 	}
@@ -104,7 +103,10 @@ func (room *GomokuRoom) Broadcast(res []byte)  {
 }
 
 func (room *GomokuRoom) Send(p *core.Player, res []byte) {
-	if p.Disconnected.Load() { return }
+	if p.Disconnected.Load() { 
+		log.Println("player is still disconnected")
+		return 
+	}
 
 	select {
 	case p.Outgoing <- res:
@@ -269,6 +271,7 @@ func (room *GomokuRoom) handleGameFinished() {
 		}
 		resBytes, _ := json.Marshal(res)
 		room.Broadcast(resBytes)
+
 	})
 }
 
@@ -358,7 +361,7 @@ func (room *GomokuRoom) ReconnectPlayer(playerID string, conn *websocket.Conn) e
 	if player == nil {
 		return fmt.Errorf("player not found in room")
 	}
-	
+
 	log.Println("Reconnecting player:", playerID, "to room:", room.RoomID)
 	player.ReconnectPlayer(conn)
 	
