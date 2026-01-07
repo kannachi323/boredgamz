@@ -22,7 +22,7 @@ type GomokuGameStateData struct {
 }
 
 type GomokuReconnectData struct {
-  GameID string `json:"gameID"`
+  LobbyID string `json:"lobbyID"`
   PlayerID string `json:"playerID"`
 }
 

@@ -38,7 +38,7 @@ export default function GomokuRoutes() : RouteObject {
     element: <Gomoku />,
     children: [
       { index: true, element: <GomokuLobby />},
-      { path: ":gameID", element:  <GomokuGame />},
+      { path: ":lobbyID", element:  <GomokuGame />},
     ]
   }
   return routes
