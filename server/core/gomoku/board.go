@@ -89,3 +89,61 @@ func IsGomoku(stones [][]*Stone, move *Move) bool {
 	return false
 }
 
+func IsGomokuByRule(stones [][]*Stone, move *Move, openingRule string) bool {
+	if move == nil {
+		return false
+	}
+
+	maxLine := longestLine(stones, move)
+
+	switch openingRule {
+	case "standard":
+		return maxLine == 5
+	case "renju":
+		if move.Color == "black" {
+			return maxLine == 5
+		}
+		return maxLine >= 5
+	default: // freestyle
+		return maxLine >= 5
+	}
+}
+
+func longestLine(stones [][]*Stone, move *Move) int {
+	directions := [][2]int{{0, 1}, {1, 0}, {1, 1}, {1, -1}}
+	maxCount := 0
+
+	for _, d := range directions {
+		dr, dc := d[0], d[1]
+		count := 1
+
+		for i := 1; i < len(stones); i++ {
+			nr, nc := move.Row+dr*i, move.Col+dc*i
+			if nr < 0 || nr >= len(stones) || nc < 0 || nc >= len(stones[0]) {
+				break
+			}
+			if stones[nr][nc] == nil || stones[nr][nc].Color != move.Color {
+				break
+			}
+			count++
+		}
+
+		for i := 1; i < len(stones); i++ {
+			nr, nc := move.Row-dr*i, move.Col-dc*i
+			if nr < 0 || nr >= len(stones) || nc < 0 || nc >= len(stones[0]) {
+				break
+			}
+			if stones[nr][nc] == nil || stones[nr][nc].Color != move.Color {
+				break
+			}
+			count++
+		}
+
+		if count > maxCount {
+			maxCount = count
+		}
+	}
+
+	return maxCount
+}
+

@@ -8,7 +8,14 @@ import { Move } from "../../types";
 
 
 export function GamePanel() {
-  const { analysis, setAnalysisIndex, gameState, exitAnalysis, startAnalysis } = useGomokuStore();
+  const { analysis, setAnalysisIndex, gameState, exitAnalysis, startAnalysis, player, send } = useGomokuStore();
+
+  const canSwap =
+    !!gameState &&
+    gameState.swapRuleEnabled &&
+    gameState.status.code === "online" &&
+    gameState.moves.length === 1 &&
+    gameState.turn === player.playerID;
 
   useEffect(() => {
     exitAnalysis()
@@ -76,6 +83,16 @@ export function GamePanel() {
 
       {/* Game Controls */}
       <div className="flex flex-row justify-center items-center gap-6 p-3 border-t border-[#1b1918]/60">
+        {canSwap && (
+          <button
+            className="hover:text-[#C3B299]/70 transition flex flex-row gap-2 items-center"
+            onClick={() => send({ type: "swap", data: {} })}
+          >
+            <p className="font-bold">Swap</p>
+            <RefreshCw size={19} />
+          </button>
+        )}
+
         <button className="hover:text-[#C3B299]/70 transition flex flex-row gap-2 items-center">
           <p className="font-bold">Draw</p>
           <Handshake size={19} />

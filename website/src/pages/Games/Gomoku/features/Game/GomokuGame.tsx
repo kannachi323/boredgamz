@@ -21,6 +21,7 @@ export default function GomokuGame() {
     connectionStatus,
     connectionError,
     conn,
+    markConnectionError,
   } = useGomokuStore();
   const { user } = useAuthStore();
   const { lobbyID } = useParams();
@@ -33,9 +34,18 @@ export default function GomokuGame() {
   }, [gameState])
 
   useEffect(() => {
-    if (conn != null || !user || !lobbyID) { return }
+    if (conn != null || !user || !lobbyID || connectionStatus !== "idle") { return }
     reconnect(lobbyID, user.id)
-  }, [conn, user, lobbyID, reconnect])
+  }, [conn, user, lobbyID, reconnect, connectionStatus])
+
+  useEffect(() => {
+    const handleOffline = () => {
+      markConnectionError("You are offline. Retry when your internet is back.")
+    }
+
+    window.addEventListener("offline", handleOffline)
+    return () => window.removeEventListener("offline", handleOffline)
+  }, [markConnectionError])
 
   const showReconnectBanner =
     gameState?.status?.code === "online" &&

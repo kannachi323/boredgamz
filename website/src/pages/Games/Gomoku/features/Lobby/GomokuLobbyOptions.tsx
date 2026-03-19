@@ -27,8 +27,8 @@ export function GomokuLobbyOptions() {
           className={`
             h-14 w-14 rounded-full cursor-pointer border-2 transition-all duration-300
             ${lobbyRequest.data.playerColor === "white"
-              ? "border-[#7DCFB6] shadow-[0_0_8px_#7DCFB6]"
-              : "border-[#C3B299] hover:border-[#7DCFB6]"
+              ? "border-white shadow-[0_0_8px_#ffffff]"
+              : "border-[#C3B299] hover:border-white"
             }
           `}
           onClick={() => handleColorSelect("white")}
@@ -41,8 +41,8 @@ export function GomokuLobbyOptions() {
           className={`
             h-14 w-14 rounded-full cursor-pointer border-2 transition-all duration-300
             ${lobbyRequest.data.playerColor === "black"
-              ? "border-[#7DCFB6] shadow-[0_0_8px_#7DCFB6]"
-              : "border-[#C3B299] hover:border-[#7DCFB6]"
+              ? "border-white shadow-[0_0_8px_#ffffff]"
+              : "border-[#C3B299] hover:border-white"
             }
           `}
           onClick={() => handleColorSelect("black")}
@@ -65,8 +65,8 @@ export function GomokuLobbyOptions() {
               border-2 text-[#C3B299] bg-[#302e2e]
               ${
                 lobbyRequest.data.timeControl === timeControl
-                  ? "border-[#7DCFB6] shadow-[0_0_8px_#7DCFB6]"
-                  : "border-[#C3B299] hover:border-[#7DCFB6] hover:bg-[#524b4b]"
+                  ? "border-white shadow-[0_0_8px_#ffffff]"
+                  : "border-[#C3B299] hover:border-white hover:bg-[#524b4b]"
               }
             `}
             onClick={() => handleTimeControlSelect(timeControl)}

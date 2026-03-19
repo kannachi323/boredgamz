@@ -7,6 +7,10 @@ import (
 type GomokuLobbyData struct {
   Name      string `json:"name"`
   Mode      string  `json:"mode"`
+  OpeningRule string `json:"openingRule,omitempty"`
+  SwapRuleEnabled bool `json:"swapRuleEnabled,omitempty"`
+  FirstMoveCenterEnabled bool `json:"firstMoveCenterEnabled,omitempty"`
+  BotDifficulty string `json:"botDifficulty,omitempty"`
   TimeControl string `json:"timeControl"`
   PlayerID string `json:"playerID"`
   PlayerColor string `json:"playerColor"`

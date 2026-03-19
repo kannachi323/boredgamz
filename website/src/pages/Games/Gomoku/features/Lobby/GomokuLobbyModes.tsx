@@ -21,6 +21,16 @@ export function GomokuLobbyModes() {
     
   }
 
+  function handleBotDifficultySelect(difficulty: "beginner" | "intermediate" | "advanced") {
+    setLobbyRequest({
+      ...lobbyRequest,
+      data: {
+        ...lobbyRequest.data,
+        botDifficulty: difficulty,
+      },
+    });
+  }
+
   return (
     <>
       {modes.map(({ label, icon, mode }) => (
@@ -37,8 +47,8 @@ export function GomokuLobbyModes() {
              cursor-pointer 
             transition-all duration-200
             ${lobbyRequest.data.mode === mode
-              ? "border-[#7DCFB6] shadow-[0_0_8px_#7DCFB6]"
-              : "border-[#C3B299] hover:border-[#7DCFB6] hover:bg-[#524b4b]"
+              ? "border-white shadow-[0_0_8px_#ffffff]"
+              : "border-[#C3B299] hover:border-white hover:bg-[#524b4b]"
             }
           `}
         >
@@ -52,6 +62,8 @@ export function GomokuLobbyModes() {
       {showModeModal && (
         <GomokuModeModal
           mode={lobbyRequest.data.mode}
+          selectedBotDifficulty={lobbyRequest.data.botDifficulty || "beginner"}
+          onSelectBotDifficulty={handleBotDifficultySelect}
           onClose={() => setShowModeModal(false)}
         />
       )}

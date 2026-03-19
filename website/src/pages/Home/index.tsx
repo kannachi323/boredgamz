@@ -7,7 +7,7 @@ import { FooterV1 } from '../../features/Footer/FooterV1';
 export default function App() {
 
   return (
-    <div className="min-h-screen bg-gray-900 font-sans antialiased">
+    <div className="min-h-screen bg-zinc-950 font-sans antialiased text-gray-100">
     
       <main>
         <MainSection />

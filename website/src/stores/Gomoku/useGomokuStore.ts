@@ -35,6 +35,7 @@ interface GomokuStore {
   reconnect: (lobbyID: string, playerID: string) => void
   retryConnection: () => void
   clearConnectionError: () => void
+  markConnectionError: (message: string) => void
   handler: (payload: ServerResponse) => void
   send: (data: ClientRequest) => void
   refreshPlayers: () => void
@@ -60,6 +61,10 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
   setPlayer: (player: Player) => set({ player }),
   setOpponent: (opponent: Player) => set({ opponent }),
   clearConnectionError: () => set({ connectionError: null }),
+  markConnectionError: (message: string) => set({
+    connectionStatus: "error",
+    connectionError: message,
+  }),
 
 
   startAnalysis: () => {
@@ -111,11 +116,14 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
   setConnection: (lobbyRequest) => {
     const oldConn = get().conn;
     if (oldConn && oldConn.readyState !== WebSocket.CLOSED) {
-        oldConn.close(1000);
+        oldConn.close(1000, "Switching session");
     }
 
-  const intent: ConnectionIntent = { type: "lobby", payload: lobbyRequest };
-    const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}/join-gomoku-lobby`);
+    const intent: ConnectionIntent = { type: "lobby", payload: lobbyRequest };
+    const joinPath = lobbyRequest.data.mode === "bots"
+      ? "/join-gomoku-bot-lobby"
+      : "/join-gomoku-lobby";
+    const socket = new WebSocket(`${import.meta.env.VITE_WEBSOCKET_ROOT}${joinPath}`);
 
   set({
     conn: socket,
@@ -125,16 +133,19 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
   });
 
     socket.onopen = () => {
-    console.log("WebSocket connected");
-    set({ connectionStatus: "queued", connectionError: null });
+      if (get().conn !== socket) return;
+      console.log("WebSocket connected");
+      set({ connectionStatus: "queued", connectionError: null });
         socket.send(JSON.stringify(lobbyRequest));
     };
     socket.onmessage = (event) => {
+        if (get().conn !== socket) return;
         const payload = JSON.parse(event.data);
         console.log(payload);
         get().handler(payload);
     };
     socket.onerror = (error) => {
+        if (get().conn !== socket) return;
         console.error("WebSocket error:", error);
         set({
           connectionStatus: "error",
@@ -142,18 +153,24 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
         });
     };
     socket.onclose = (event) => {
+      if (get().conn !== socket) return;
       console.log("WebSocket closed:", event.code, event.reason);
       const { gameState } = get();
       const isFinished = gameState?.status?.code === "offline";
+      const isUserCancelled =
+        event.code === 1000 &&
+        (event.reason === "User cancelled" || event.reason === "Switching session");
 
       set((state) => ({
         conn: null,
-        connectionStatus: isFinished || event.code === 1000
+        connectionStatus: isFinished
           ? (state.connectionStatus === "connected" ? "connected" : "idle")
-          : "error",
-        connectionError: isFinished || event.code === 1000
+          : isUserCancelled
+            ? "idle"
+            : "error",
+        connectionError: isFinished || isUserCancelled
           ? null
-          : event.reason || "Connection closed unexpectedly. Please retry.",
+          : state.connectionError || event.reason || "Connection closed unexpectedly. Please retry.",
       }));
     };
   },
@@ -193,15 +210,18 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
     });
 
     socket.onopen = () => {
+      if (get().conn !== socket) return;
       console.log("WebSocket connected");
       socket.send(JSON.stringify(reconnectRequest));
     };
     socket.onmessage = (event) => {
+        if (get().conn !== socket) return;
         const payload = JSON.parse(event.data);
         console.log(payload);
         get().handler(payload);
     };
     socket.onerror = (error) => {
+        if (get().conn !== socket) return;
         console.error("WebSocket error:", error);
         set({
           connectionStatus: "error",
@@ -209,16 +229,20 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
         });
     };
     socket.onclose = (event) => {
+      if (get().conn !== socket) return;
       console.log("WebSocket closed:", event.code, event.reason);
       const { gameState } = get();
       const isFinished = gameState?.status?.code === "offline";
+      const isUserCancelled =
+        event.code === 1000 &&
+        (event.reason === "User cancelled" || event.reason === "Switching session");
 
       set({
         conn: null,
-        connectionStatus: isFinished || event.code === 1000 ? "idle" : "error",
-        connectionError: isFinished || event.code === 1000
+        connectionStatus: isFinished || isUserCancelled ? "idle" : "error",
+        connectionError: isFinished || isUserCancelled
           ? null
-          : event.reason || "Reconnect closed unexpectedly. Please retry.",
+          : get().connectionError || event.reason || "Reconnect closed unexpectedly. Please retry.",
       });
     };
 
@@ -335,6 +359,9 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
       gameID: data.gameID,
       board: newBoard,
       size: data.boardSize,
+      openingRule: "freestyle",
+      swapRuleEnabled: false,
+      firstMoveCenterEnabled: false,
       players: newPlayers,
       turn: "",
       status: {
