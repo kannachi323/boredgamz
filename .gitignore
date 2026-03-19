@@ -26,4 +26,24 @@ dist-ssr
 *.sw?
 .env
 
-.github
+.github/*
+!.github/workflows/
+!.github/workflows/**
+
+# Go binaries
+*.exe
+*.dll
+*.so
+*.dylib
+boredgamz
+server/boredgamz
+
+# Build artifacts
+*.o
+*.a
+*.out
+
+# Playwright
+website/test-results/
+website/playwright-report/
+website/.auth/
