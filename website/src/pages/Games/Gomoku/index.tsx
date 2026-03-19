@@ -1,0 +1,45 @@
+import { useEffect } from "react";
+import { Outlet, RouteObject } from "react-router-dom";
+
+
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useGomokuStore } from "@/stores/Gomoku/useGomokuStore";
+import { GomokuLobby } from "./features/Lobby/GomokuLobby";
+import GomokuGame from "./features/Game/GomokuGame";
+
+function Gomoku() {
+  const { checkAuth, isAuthenticated } = useAuthStore();
+  const { setPlayer, player } = useGomokuStore();
+
+  useEffect(() => {
+    const check = async () => {
+      const success = await checkAuth(() => {});
+      if (!success) return;
+
+      const user = useAuthStore.getState().user;
+      if (!user) return;
+
+      setPlayer({...player, playerID: user.id, playerName: user.username});
+    };
+    check()
+  }, [])
+
+  // Always allow access (user or guest)
+  if (!isAuthenticated) return <div className="flex items-center justify-center h-screen">Loading...</div>
+
+  return (
+    <Outlet />
+  )
+}
+
+export default function GomokuRoutes() : RouteObject {
+  const routes : RouteObject = {
+    path: "/games/gomoku", 
+    element: <Gomoku />,
+    children: [
+      { index: true, element: <GomokuLobby />},
+      { path: ":lobbyID", element:  <GomokuGame />},
+    ]
+  }
+  return routes
+}

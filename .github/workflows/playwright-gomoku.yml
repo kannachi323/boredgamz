@@ -1,0 +1,115 @@
+name: Playwright Gomoku E2E
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  gomoku-e2e:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: boredgamz
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d boredgamz"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install website dependencies
+        working-directory: website
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: website
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Initialize database schema and seed
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d boredgamz -f server/db/sql/extensions.sql
+          psql -h 127.0.0.1 -U postgres -d boredgamz -f server/db/sql/schema.sql
+          psql -h 127.0.0.1 -U postgres -d boredgamz -f server/db/sql/data.sql
+
+      - name: Start backend
+        working-directory: server
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/boredgamz?sslmode=disable
+          JWT_SECRET_KEY: github-actions-secret
+        run: |
+          nohup go run main.go > /tmp/boredgamz-server.log 2>&1 &
+
+      - name: Wait for backend health
+        run: |
+          for i in {1..40}; do
+            if curl -fsS http://127.0.0.1:3000/api/hello > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Backend failed to start"
+          cat /tmp/boredgamz-server.log || true
+          exit 1
+
+      - name: Start frontend
+        working-directory: website
+        env:
+          VITE_SERVER_ROOT: http://127.0.0.1:3000/api
+          VITE_WEBSOCKET_ROOT: ws://127.0.0.1:3000/api
+        run: |
+          nohup npm run dev -- --host 127.0.0.1 --port 5173 > /tmp/boredgamz-website.log 2>&1 &
+
+      - name: Wait for frontend
+        run: |
+          for i in {1..40}; do
+            if curl -fsS http://127.0.0.1:5173 > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Frontend failed to start"
+          cat /tmp/boredgamz-website.log || true
+          exit 1
+
+      - name: Run Playwright E2E
+        working-directory: website
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:5173
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: website/playwright-report
+          if-no-files-found: ignore
