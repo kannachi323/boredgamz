@@ -24,7 +24,7 @@ export default function SignUp() {
 
       console.log("User registered:", formData);
 
-      const res = await fetch("http://localhost:3000/signup", {
+        const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/signup`, {
           method: "POST",
           headers: {
               "Content-Type": "application/json",

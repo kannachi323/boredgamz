@@ -13,20 +13,16 @@ export default function Games() {
   return (
     <section id="games" className="py-20 bg-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-4xl font-extrabold text-white text-center mb-4">
-            Our Games
+        <h2 className="text-7xl font-extrabold text-white text-center mb-5">
+          Games
         </h2>
-        <p className="text-xl text-gray-400 text-center mb-16">
-            Jump into classic strategy games, re-imagined for seamless multiplayer fun.
-        </p>
-
        
         <SearchBar />
 
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <GameCard
-              title="Tic-Tac-Toe"
+              title="Tic Tac Toe"
               description="The timeless classic. Perfect for quick matches and challenging friends."
               bgImg={`url(${TICTACTOE})`}
               bgSize='120% auto'

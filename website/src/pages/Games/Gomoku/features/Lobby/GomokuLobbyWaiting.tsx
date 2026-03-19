@@ -2,11 +2,23 @@ type GomokuLobbyWaitingProps = {
   onCancel: () => void
   onRetry: () => void
   status: "connecting" | "queued" | "reconnecting" | "error"
+  mode: string
   errorMessage: string | null
 }
 
-export function GomokuLobbyWaiting({ onCancel, onRetry, status, errorMessage } : GomokuLobbyWaitingProps) {
+export function GomokuLobbyWaiting({ onCancel, onRetry, status, mode, errorMessage } : GomokuLobbyWaitingProps) {
   const isError = status === "error";
+  const isBotsMode = mode === "bots";
+  const title =
+    status === "connecting"
+      ? isBotsMode ? "Creating Bot Match..." : "Joining Match..."
+      : status === "reconnecting"
+        ? "Reconnecting..."
+        : isError
+          ? "Connection Lost"
+          : isBotsMode
+            ? "Preparing Bot Game..."
+            : "Searching for Opponent...";
   return (
 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
@@ -18,7 +30,7 @@ export function GomokuLobbyWaiting({ onCancel, onRetry, status, errorMessage } :
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           <h2 className="text-2xl text-[#C3B299] font-bold">
-            {isError ? "Connection Lost" : "Searching for Opponent..."}
+            {title}
           </h2>
           {errorMessage && (
             <p className="text-sm text-[#d7c9b8] text-center">{errorMessage}</p>

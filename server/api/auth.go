@@ -175,7 +175,7 @@ func LogOut() http.HandlerFunc {
 
 func GuestSession() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		guestToken, err := utils.GenerateGuestJWT()
+		guestID, guestToken, err := utils.GenerateGuestJWT()
 		if err != nil {
 			http.Error(w, "Failed to generate guest token", http.StatusInternalServerError)
 			return
@@ -194,7 +194,7 @@ func GuestSession() http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(&AuthResponse{
 			Username: "guest",
-			UserID:   guestToken,
+			UserID:   guestID,
 		})
 	}
 }

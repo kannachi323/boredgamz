@@ -5,6 +5,7 @@ import (
 	"boredgamz/db"
 	"container/list"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -54,6 +55,50 @@ func (lobby *GomokuLobby) AddPlayer(player *core.Player) {
 
 	if !isPlayerConnected(player) {
 		log.Println("Player disconnected, not adding to queue:", player.PlayerID)
+		return
+	}
+
+	if strings.Contains(lobby.LobbyName, "gomoku-bots-") {
+		player.StartPlayer()
+
+		botColor := "white"
+		if player.Color == "white" {
+			botColor = "black"
+		}
+
+		difficulty := player.BotDifficulty
+		if difficulty == "" {
+			difficulty = "beginner"
+		}
+
+		bot := core.NewPlayer(
+			"bot_"+difficulty+"_"+player.PlayerID,
+			strings.Title(difficulty)+" Bot",
+			botColor,
+			&core.PlayerClock{Remaining: player.Clock.Remaining},
+			nil,
+		)
+
+		openingRule := player.OpeningRule
+		if openingRule == "" {
+			openingRule = ParseOpeningRuleFromLobbyID(lobby.LobbyName)
+		}
+		room := NewGomokuRoom(
+			player,
+			bot,
+			lobby.LobbyName,
+			openingRule,
+			player.SwapRuleEnabled,
+			player.FirstMoveCenterEnabled,
+			lobby.DB,
+			lobby.RoomManager,
+		)
+		room.BotPlayerID = bot.PlayerID
+		room.BotDifficulty = difficulty
+
+		lobby.RoomManager.RegisterPlayerToRoom(player.PlayerID, room)
+		lobby.RoomManager.RegisterPlayerToRoom(bot.PlayerID, room)
+		go room.Start()
 		return
 	}
 
@@ -145,7 +190,20 @@ func (lobby *GomokuLobby) MatchPlayers() {
 			log.Println("Matched:", w.PlayerID, b.PlayerID)
 
 			go func(wp, bp *core.Player) {
-				room := NewGomokuRoom(wp, bp, lobby.LobbyName, lobby.DB, lobby.RoomManager)
+				openingRule := wp.OpeningRule
+				if openingRule == "" {
+					openingRule = ParseOpeningRuleFromLobbyID(lobby.LobbyName)
+				}
+				room := NewGomokuRoom(
+					wp,
+					bp,
+					lobby.LobbyName,
+					openingRule,
+					wp.SwapRuleEnabled,
+					wp.FirstMoveCenterEnabled,
+					lobby.DB,
+					lobby.RoomManager,
+				)
 				if room == nil {
 					return
 				}

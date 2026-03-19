@@ -40,6 +40,10 @@ export function createLobbyRequest() : LobbyRequest {
             playerID: "",
             playerColor: "black",
             mode: "casual",
+            openingRule: "freestyle",
+            swapRuleEnabled: false,
+            firstMoveCenterEnabled: true,
+            botDifficulty: "beginner",
             timeControl: "Rapid",
             name: "9x9",
         }

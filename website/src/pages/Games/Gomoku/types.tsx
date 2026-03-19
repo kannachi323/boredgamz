@@ -20,6 +20,9 @@ export interface GameState {
   gameID: string;
   board: Board;
   size: number;
+  openingRule: "freestyle" | "standard" | "renju";
+  swapRuleEnabled: boolean;
+  firstMoveCenterEnabled: boolean;
   players: Player[];
   turn: string;
   status: GameStatus;
@@ -74,6 +77,10 @@ export interface LobbyRequest {
     name: string
     timeControl: string;
     mode: string 
+    openingRule: "freestyle" | "standard" | "renju"
+    swapRuleEnabled: boolean
+    firstMoveCenterEnabled: boolean
+    botDifficulty?: "beginner" | "intermediate" | "advanced"
     playerID: string;
     playerName: string;
     playerColor: string;
@@ -99,8 +106,14 @@ export interface MoveRequest {
   }
 }
 
+export interface SwapRequest {
+  type: "swap"
+  data: Record<string, never>
+}
+
 export type ClientRequest = 
   | MoveRequest
+  | SwapRequest
   | LobbyRequest
   | ReconnectRequest
 

@@ -7,16 +7,23 @@ import (
 )
 
 func (s* Server) MountGomokuLobbies() {
-	s.LobbyManager.RegisterLobby("gomoku-casual-19x19", gomokucore.NewGomokuLobby(1000, "gomoku-casual-19x19", s.DB))
-	s.LobbyManager.RegisterLobby("gomoku-casual-13x13", gomokucore.NewGomokuLobby(1000, "gomoku-casual-13x13", s.DB))
-	s.LobbyManager.RegisterLobby("gomoku-casual-9x9", gomokucore.NewGomokuLobby(1000, "gomoku-casual-9x9", s.DB))
-	s.LobbyManager.RegisterLobby("gomoku-ranked-19x19", gomokucore.NewGomokuLobby(1000, "gomoku-ranked-19x19", s.DB))
-	s.LobbyManager.RegisterLobby("gomoku-ranked-13x13", gomokucore.NewGomokuLobby(1000, "gomoku-ranked-13x13", s.DB))
-	s.LobbyManager.RegisterLobby("gomoku-ranked-9x9", gomokucore.NewGomokuLobby(1000, "gomoku-ranked-9x9", s.DB))
+	modes := []string{"casual", "ranked", "bots"}
+	boards := []string{"19x19", "13x13", "9x9"}
+	rules := []string{"freestyle", "standard", "renju"}
+
+	for _, mode := range modes {
+		for _, board := range boards {
+			for _, rule := range rules {
+				lobbyID := gomokucore.GetGomokuLobbyID(board, mode, rule)
+				s.LobbyManager.RegisterLobby(lobbyID, gomokucore.NewGomokuLobby(1000, lobbyID, s.DB))
+			}
+		}
+	}
 }
 
 func (s *Server) MountGomokuHandlers() {
 	s.APIRouter.Get("/join-gomoku-lobby", gomokuapi.JoinGomokuLobby(s.LobbyManager))
+	s.APIRouter.Get("/join-gomoku-bot-lobby", gomokuapi.JoinGomokuBotLobby(s.LobbyManager))
 	s.APIRouter.Get("/reconnect-gomoku-room", gomokuapi.ReconnectToGomokuRoom(s.LobbyManager, s.DB))
 	s.APIRouter.With(middleware.AuthMiddleware).Get("/gomoku/game", gomokuapi.GetGomokuGame(s.DB))
 	s.APIRouter.With(middleware.AuthMiddleware).Get("/gomoku/games", gomokuapi.GetGomokuGames(s.DB))

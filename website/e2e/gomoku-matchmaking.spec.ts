@@ -53,6 +53,8 @@ async function createMatch(browser: import('@playwright/test').Browser) {
 }
 
 test.describe('Gomoku multiplayer matchmaking', () => {
+  test.describe.configure({ mode: 'serial' })
+
   test('two guest users can join queue and enter the same room', async ({ browser }) => {
     const { contextA, contextB, pageA, pageB } = await createMatch(browser)
 

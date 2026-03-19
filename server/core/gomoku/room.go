@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -29,10 +30,21 @@ type GomokuRoom struct {
 	*core.Room
 	GameState *GomokuGameState
 	RoomManager *core.RoomManager
+	BotPlayerID string
+	BotDifficulty string
 	mu sync.Mutex;
 }
 
-func NewGomokuRoom(p1, p2 *core.Player, name string, db *db.Database, roomManager *core.RoomManager) core.RoomController{
+func NewGomokuRoom(
+	p1,
+	p2 *core.Player,
+	name string,
+	openingRule string,
+	swapRuleEnabled bool,
+	firstMoveCenterEnabled bool,
+	db *db.Database,
+	roomManager *core.RoomManager,
+) *GomokuRoom {
 	newGomokuRoom := &GomokuRoom{
 		Room: &core.Room{
 			DB: db,
@@ -40,7 +52,7 @@ func NewGomokuRoom(p1, p2 *core.Player, name string, db *db.Database, roomManage
 			Players: []*core.Player{p1, p2},
 			Events: make(chan interface{}, 100),
 		},
-		GameState: NewGomokuGame(name, p1, p2),
+		GameState: NewGomokuGame(name, p1, p2, openingRule, swapRuleEnabled, firstMoveCenterEnabled),
 		RoomManager: roomManager,
 	}
 
@@ -68,6 +80,8 @@ func (room *GomokuRoom) Start() {
 		log.Println("Broadcasting initial game state for room:", room.RoomID)
 		room.Broadcast(resBytes)
 	}
+
+	room.scheduleBotTurn()
 }
 
 
@@ -212,6 +226,20 @@ func (room *GomokuRoom) handleClientRequest(raw []byte) {
 		}
 		resBytes, _ := json.Marshal(resp)
 		room.Broadcast(resBytes)
+		room.scheduleBotTurn()
+	case "swap":
+		if err := HandleGomokuSwap(room.GameState); err != nil {
+			return
+		}
+
+		data, _ := json.Marshal(room.GameState)
+		resp := &GomokuServerResponse{
+			Type: "update",
+			Data: data,
+		}
+		resBytes, _ := json.Marshal(resp)
+		room.Broadcast(resBytes)
+		room.scheduleBotTurn()
 	}
 }
 
@@ -231,23 +259,158 @@ func (room *GomokuRoom) handleGomokuEvent(ev GomokuGameEvent) {
 	_ = ev
 }
 
+func (room *GomokuRoom) scheduleBotTurn() {
+	if room.BotPlayerID == "" || room.GameState.Status.Code != "online" {
+		return
+	}
+	if room.GameState.Turn != room.BotPlayerID {
+		return
+	}
+
+	go func() {
+		time.Sleep(450 * time.Millisecond)
+
+		room.mu.Lock()
+		defer room.mu.Unlock()
+
+		if room.GameState.Status.Code != "online" || room.GameState.Turn != room.BotPlayerID {
+			return
+		}
+
+		botPlayer := GetPlayerByID(room.GameState, room.BotPlayerID)
+		if botPlayer == nil {
+			return
+		}
+
+		move := room.pickBotMove(botPlayer.Color)
+		if move == nil {
+			return
+		}
+
+		HandleGomokuMove(room.GameState, move)
+
+		data, _ := json.Marshal(room.GameState)
+		resp := &GomokuServerResponse{
+			Type: "update",
+			Data: data,
+		}
+		resBytes, _ := json.Marshal(resp)
+		room.Broadcast(resBytes)
+	}()
+}
+
+func (room *GomokuRoom) pickBotMove(botColor string) *Move {
+	size := room.GameState.Board.Size
+	empty := room.emptyMoves()
+	if len(empty) == 0 {
+		return nil
+	}
+
+	if room.BotDifficulty == "advanced" {
+		if winning := room.findWinningMove(botColor); winning != nil {
+			return winning
+		}
+		opponent := "white"
+		if botColor == "white" {
+			opponent = "black"
+		}
+		if block := room.findWinningMove(opponent); block != nil {
+			return &Move{Row: block.Row, Col: block.Col, Color: botColor}
+		}
+	}
+
+	if room.BotDifficulty == "intermediate" || room.BotDifficulty == "advanced" {
+		if room.GameState.LastMove != nil {
+			near := room.neighboringMoves(room.GameState.LastMove.Row, room.GameState.LastMove.Col, botColor)
+			if len(near) > 0 {
+				return near[rand.Intn(len(near))]
+			}
+		}
+
+		center := size / 2
+		centerMove := &Move{Row: center, Col: center, Color: botColor}
+		if IsValidMove(room.GameState.Board, centerMove) {
+			return centerMove
+		}
+	}
+
+	r := empty[rand.Intn(len(empty))]
+	return &Move{Row: r.Row, Col: r.Col, Color: botColor}
+}
+
+func (room *GomokuRoom) emptyMoves() []*Move {
+	var moves []*Move
+	for r := 0; r < room.GameState.Board.Size; r++ {
+		for c := 0; c < room.GameState.Board.Size; c++ {
+			if room.GameState.Board.Stones[r][c].Color == "" {
+				moves = append(moves, &Move{Row: r, Col: c})
+			}
+		}
+	}
+	return moves
+}
+
+func (room *GomokuRoom) neighboringMoves(row, col int, color string) []*Move {
+	var result []*Move
+	for dr := -1; dr <= 1; dr++ {
+		for dc := -1; dc <= 1; dc++ {
+			if dr == 0 && dc == 0 {
+				continue
+			}
+
+			r := row + dr
+			c := col + dc
+			move := &Move{Row: r, Col: c, Color: color}
+			if IsValidMove(room.GameState.Board, move) {
+				result = append(result, move)
+			}
+		}
+	}
+	return result
+}
+
+func (room *GomokuRoom) findWinningMove(color string) *Move {
+	for r := 0; r < room.GameState.Board.Size; r++ {
+		for c := 0; c < room.GameState.Board.Size; c++ {
+			if room.GameState.Board.Stones[r][c].Color != "" {
+				continue
+			}
+
+			move := &Move{Row: r, Col: c, Color: color}
+			room.GameState.Board.Stones[r][c].Color = color
+			isWin := IsGomoku(room.GameState.Board.Stones, move)
+			room.GameState.Board.Stones[r][c].Color = ""
+
+			if isWin {
+				return move
+			}
+		}
+	}
+
+	return nil
+}
+
 func (room *GomokuRoom) handleGameFinished() {
 	room.CloseOnce.Do(func() {
-		//persist the game by saving to database
-		go func() {
-			err := gomokudb.InsertGame(
-				room.DB,
-				room.GameState.GameID,
-				room.GameState.Players[0].PlayerID,
-				room.GameState.Players[1].PlayerID,
-				room.GameState.ToRow(),
-			)
-			if err != nil {
-				log.Println("Error saving finished gomoku game to database:", err)
-			} else {
-				log.Println("Finished gomoku game saved to database:", room.GameState.GameID)
-			}
-		}()
+		if room.DB == nil || room.DB.Pool == nil {
+			log.Println("Skipping gomoku game persistence: database is not initialized")
+		} else {
+			// persist the game by saving to database
+			go func() {
+				err := gomokudb.InsertGame(
+					room.DB,
+					room.GameState.GameID,
+					room.GameState.Players[0].PlayerID,
+					room.GameState.Players[1].PlayerID,
+					room.GameState.ToRow(),
+				)
+				if err != nil {
+					log.Println("Error saving finished gomoku game to database:", err)
+				} else {
+					log.Println("Finished gomoku game saved to database:", room.GameState.GameID)
+				}
+			}()
+		}
 
 		// Send final game state ONE MORE TIME just to be safe
 		data, _ := json.Marshal(room.GameState)

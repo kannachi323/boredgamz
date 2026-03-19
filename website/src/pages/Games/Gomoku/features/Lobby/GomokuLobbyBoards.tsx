@@ -22,8 +22,8 @@ export function GomokuLobbyBoards() {
           className={`bg-[#302e2e] aspect-square w-[256px] flex flex-col items-center justify-center
           rounded-lg border border-[#1b1918] hover:bg-[#524b4b] transition cursor-pointer p-2 gap-2
           ${lobbyRequest.data.name === label
-            ? "border-[#7DCFB6] shadow-[0_0_8px_#7DCFB6]"
-            : "border-[#C3B299] hover:border-[#7DCFB6] hover:bg-[#524b4b]"
+            ? "border-white shadow-[0_0_8px_#ffffff]"
+            : "border-[#C3B299] hover:border-white hover:bg-[#524b4b]"
           }
           `}
           onClick={() => setLobbyRequest({...lobbyRequest, data: { ...lobbyRequest.data, name: label}})}

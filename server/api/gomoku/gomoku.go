@@ -14,6 +14,14 @@ import (
 )
 
 func JoinGomokuLobby(lm *core.LobbyManager) http.HandlerFunc {
+    return joinGomokuLobby(lm, false)
+}
+
+func JoinGomokuBotLobby(lm *core.LobbyManager) http.HandlerFunc {
+    return joinGomokuLobby(lm, true)
+}
+
+func joinGomokuLobby(lm *core.LobbyManager, botsOnly bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
         if !websocket.IsWebSocketUpgrade(r) {
 			http.Error(w, "Expected WebSocket upgrade", http.StatusUpgradeRequired)
@@ -47,7 +55,18 @@ func JoinGomokuLobby(lm *core.LobbyManager) http.HandlerFunc {
             return
         }
         
-        lobbyController, ok := lm.GetLobby(gomoku.GetGomokuLobbyID(reqBody.Name, reqBody.Mode))
+        if reqBody.OpeningRule == "" {
+            reqBody.OpeningRule = "freestyle"
+        }
+
+        if botsOnly {
+            reqBody.Mode = "bots"
+        } else if reqBody.Mode == "bots" {
+            writeWSError(conn, "bots mode must use bot lobby endpoint")
+            return
+        }
+
+        lobbyController, ok := lm.GetLobby(gomoku.GetGomokuLobbyID(reqBody.Name, reqBody.Mode, reqBody.OpeningRule))
 		if !ok {
 			log.Println("Lobby not found:", reqBody.Name)
             writeWSError(conn, "lobby not found")
@@ -67,6 +86,10 @@ func JoinGomokuLobby(lm *core.LobbyManager) http.HandlerFunc {
             core.NewPlayerClock(reqBody.TimeControl),
             conn,
         )
+        player.OpeningRule = reqBody.OpeningRule
+        player.SwapRuleEnabled = reqBody.SwapRuleEnabled
+        player.FirstMoveCenterEnabled = reqBody.FirstMoveCenterEnabled
+        player.BotDifficulty = reqBody.BotDifficulty
 
         gomokuLobby.AddPlayer(player)
     }
@@ -109,9 +132,10 @@ func ReconnectToGomokuRoom(lm *core.LobbyManager, db *db.Database) http.HandlerF
         }
 
     
-        lobbyController, ok := lm.GetLobby(reqBody.LobbyID)
+        normalizedLobbyID := gomoku.NormalizeLobbyID(reqBody.LobbyID)
+        lobbyController, ok := lm.GetLobby(normalizedLobbyID)
 		if !ok {
-			log.Println("Lobby not found:", reqBody.LobbyID)
+            log.Println("Lobby not found:", reqBody.LobbyID, "normalized as:", normalizedLobbyID)
             writeWSError(conn, "lobby not found")
 			return
 		}

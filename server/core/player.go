@@ -23,6 +23,10 @@ type Player struct {
 	PlayerID     string `json:"playerID"`
 	Color        string `json:"color"`
 	PlayerName   string `json:"playerName"`
+	OpeningRule  string `json:"-"`
+	SwapRuleEnabled bool `json:"-"`
+	FirstMoveCenterEnabled bool `json:"-"`
+	BotDifficulty string `json:"-"`
 	Clock        *PlayerClock `json:"playerClock"`
 	Conn         *websocket.Conn `json:"-"`
 	Incoming     chan []byte `json:"-"`
@@ -79,6 +83,10 @@ func NewPlayer(playerID, playerName, color string, clock *PlayerClock, conn *web
 }
 
 func (p *Player) ReconnectPlayer(conn *websocket.Conn) {
+	if conn == nil {
+		return
+	}
+
 	// 1. KILL THE OLD LOOPS FIRST
 	// This stops the "Old Writer" from stealing messages destined for the new connection
 	p.Cancel()
@@ -97,6 +105,10 @@ func (p *Player) ReconnectPlayer(conn *websocket.Conn) {
 }
 
 func (p *Player) StartPlayer() {
+	if p.Conn == nil {
+		return
+	}
+
 	p.StartReader()
 	p.StartWriter()
 }
@@ -107,12 +119,18 @@ func (p *Player) ClosePlayer() {
 	}
 	p.CloseOnce.Do(func() {
 		p.Disconnected.Store(true)
-		p.Conn.Close()
+		if p.Conn != nil {
+			_ = p.Conn.Close()
+		}
 		p.Cancel() // Ensure all loops stop immediately
 	})
 }
 
 func (p *Player) StartReader() {
+	if p.Conn == nil {
+		return
+	}
+
 	go func() {
 		// Ensure we clean up if this loop dies
 		defer p.ClosePlayer()
@@ -139,6 +157,10 @@ func (p *Player) StartReader() {
 }
 
 func (p *Player) StartWriter() {
+	if p.Conn == nil {
+		return
+	}
+
 	// Capture the connection valid for THIS loop instance
 	conn := p.Conn 
 	

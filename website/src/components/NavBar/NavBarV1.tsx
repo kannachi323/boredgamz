@@ -13,55 +13,81 @@ export function NavBarV1() {
     <>
         <div className="flex justify-between items-center h-16 px-8">
           <a href="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-extrabold tracking-tight text-white">Bored<span className="text-green-400">Gamz</span></span>
+            <span className="text-2xl font-extrabold tracking-tight text-white">Bored<span className="text-gray-300">Gamz</span></span>
           </a>
 
           <nav className="flex flex-row justify-center items-center space-x-8">
-            {['Games', 'Community', 'About'].map((item) => (
-              <a key={item} href={`/${item.toLowerCase()}`} className="text-gray-300 hover:text-green-400 transition duration-150 font-semibold">
+            {['Games', 'Community', 'Donate'].map((item) => (
+              <a key={item} href={`/${item.toLowerCase()}`} className="text-gray-300 hover:text-white transition duration-150 font-semibold">
                 {item}
               </a>
             ))}
+
+            <Dropdown
+              align="center"
+              openOnHover
+              trigger={
+                <span className="text-gray-300 hover:text-white transition duration-150 font-semibold">
+                  Support
+                </span>
+              }
+              items={[
+                {
+                  key: 'help',
+                  content: 'Help',
+                  onClick: () => {
+                    window.location.href = '/help'
+                  },
+                },
+                {
+                  key: 'about',
+                  content: 'About',
+                  onClick: () => {
+                    window.location.href = '/about'
+                  },
+                },
+              ]}
+            />
+
             <div className="flex flex-row justify-center items-center gap-2">
               {isAuthenticated ? (
-                <div className="relative">
-                  <button
-                    className="
-                      flex items-center gap-2 px-3 py-1.5 
-                      bg-[#2a2f37] text-gray-200 
-                      rounded-full border border-[#3a3f47]
-                      hover:bg-[#333842] 
-                      transition
-                    "
-                  >
-                    <CgProfile className="text-2xl" />
-                    <span className="font-semibold text-sm">
-                      {user?.username || "Player"}
+                <Dropdown
+                  align="right"
+                  trigger={
+                    <span
+                      className="
+                        flex items-center gap-2 px-3 py-1.5 
+                        bg-gray-800 text-gray-200 
+                        rounded-full border border-gray-700
+                        hover:bg-gray-700 
+                        transition
+                      "
+                    >
+                      <CgProfile className="text-2xl" />
+                      <span className="font-semibold text-sm">
+                        {user?.username || "Player"}
+                      </span>
                     </span>
-                  </button>
-
-                  <div className="absolute right-0 mt-2">
-                    <Dropdown
-                      label=""
-                      items={[
-                        <button
-                          className="text-left w-full px-3 py-2 hover:bg-gray-100 transition"
-                          onClick={() => logout(() => navigate("/"))}
-                        >
-                          Log out
-                        </button>,
-                      ]}
-                    />
-                  </div>
-                </div>
+                  }
+                  items={[
+                    {
+                      key: 'logout',
+                      content: 'Log out',
+                      onClick: () => {
+                        void logout(() => navigate('/'))
+                      },
+                    },
+                  ]}
+                />
               ) : (
                 <div className="flex items-center gap-3">
                   <a
                     className="
                       px-4 py-1.5 
-                      bg-[#313d51] text-[#d1d7e3] 
+                      bg-gray-800 text-gray-100 
                       font-semibold rounded-md 
-                      hover:bg-[#43536d] 
+                      border border-gray-700
+                      hover:bg-gray-700 
                       transition
                     "
                     href="/login"
@@ -71,9 +97,9 @@ export function NavBarV1() {
                   <a
                     className="
                       px-4 py-1.5 
-                      bg-[#05df71] text-[#002123] 
+                      bg-white text-gray-900 
                       font-semibold rounded-md 
-                      hover:bg-[#1bfe8c] 
+                      hover:bg-gray-200 
                       transition
                     "
                     href="/signup"

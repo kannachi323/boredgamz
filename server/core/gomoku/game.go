@@ -16,6 +16,9 @@ type GomokuGameStatus struct {
 type GomokuGameState struct {
 	GameID   string      `json:"gameID"`
 	Board    *Board      `json:"board"`
+	OpeningRule string `json:"openingRule"`
+	SwapRuleEnabled bool `json:"swapRuleEnabled"`
+	FirstMoveCenterEnabled bool `json:"firstMoveCenterEnabled"`
 	Players  []*core.Player   `json:"players"`
 	PlayerClocks map[string]*core.PlayerClock `json:"-"`
 	Status   *GomokuGameStatus `json:"status"`
@@ -25,7 +28,7 @@ type GomokuGameState struct {
 	Moves	[]*Move     `json:"moves"`
 }
 
-func NewGomokuGame(name string, p1 *core.Player, p2 *core.Player) *GomokuGameState {
+func NewGomokuGame(name string, p1 *core.Player, p2 *core.Player, openingRule string, swapRuleEnabled bool, firstMoveCenterEnabled bool) *GomokuGameState {
 	var turn string
 	if p1.Color == "black" {
 		turn = p1.PlayerID
@@ -37,17 +40,24 @@ func NewGomokuGame(name string, p1 *core.Player, p2 *core.Player) *GomokuGameSta
 	switch name {
 	case "19x19":
 		size = 19
-	case "15x15":
-		size = 15
+	case "13x13":
+		size = 13
 	case "9x9":
 		size = 9
 	default:
 		size = 9
 	}
 
+	if openingRule == "" {
+		openingRule = "freestyle"
+	}
+
 	newGameState := &GomokuGameState{
 		GameID:  uuid.New().String(),
 		Board:   NewEmptyBoard(size),
+		OpeningRule: openingRule,
+		SwapRuleEnabled: swapRuleEnabled,
+		FirstMoveCenterEnabled: firstMoveCenterEnabled,
 		Players: []*core.Player{p1, p2},
 		Status: &GomokuGameStatus{
 			Result: "",
@@ -68,7 +78,7 @@ func HandleGomokuMove(gs *GomokuGameState, move *Move) {
 
     UpdateMoves(gs, move)
 
-    if IsGomoku(gs.Board.Stones, move) {
+	if IsGomokuByRule(gs.Board.Stones, move, gs.OpeningRule) {
         UpdateGameStatus(gs, "win", gs.Turn)
         return
     }
@@ -81,6 +91,26 @@ func HandleGomokuMove(gs *GomokuGameState, move *Move) {
     // Switch turn
     UpdatePlayerTurn(gs)
 
+}
+
+func HandleGomokuSwap(gs *GomokuGameState) error {
+	if !gs.SwapRuleEnabled {
+		return fmt.Errorf("swap rule is disabled")
+	}
+
+	if len(gs.Moves) != 1 {
+		return fmt.Errorf("swap is only allowed after the first move")
+	}
+
+	current := GetPlayerByID(gs, gs.Turn)
+	opponent := GetOpponent(gs, gs.Turn)
+	if current == nil || opponent == nil {
+		return fmt.Errorf("invalid players")
+	}
+
+	current.Color, opponent.Color = opponent.Color, current.Color
+	UpdatePlayerTurn(gs)
+	return nil
 }
 
 
@@ -101,6 +131,13 @@ func UpdateLastMove(gs *GomokuGameState, move *Move) error {
     if gs.Turn != player.PlayerID {
         return fmt.Errorf("not your turn")
     }
+
+	if gs.FirstMoveCenterEnabled && len(gs.Moves) == 0 {
+		center := gs.Board.Size / 2
+		if move.Row != center || move.Col != center {
+			return fmt.Errorf("first move must be at center")
+		}
+	}
 
     if !IsValidMove(gs.Board, move) {
         return fmt.Errorf("invalid move")

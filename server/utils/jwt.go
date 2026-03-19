@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"os"
 	"time"
@@ -27,10 +29,16 @@ func GenerateAccessJWT(userID string) (string, error) {
     return token.SignedString([]byte(secret))
 }
 
-func GenerateGuestJWT() (string, error) {
+func GenerateGuestJWT() (string, string, error) {
     secret := os.Getenv("JWT_SECRET_KEY")
-    guestID := "guest_" + time.Now().Format("20060102150405_0700")
-    
+
+    randomBytes := make([]byte, 6)
+    if _, err := rand.Read(randomBytes); err != nil {
+        return "", "", err
+    }
+
+    guestID := "guest_" + hex.EncodeToString(randomBytes)
+
     claims := &CustomClaims{
         IsGuest: true,
         RegisteredClaims: jwt.RegisteredClaims{
@@ -39,8 +47,13 @@ func GenerateGuestJWT() (string, error) {
         },
     }
     token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    
-    return token.SignedString([]byte(secret))
+
+    signedToken, err := token.SignedString([]byte(secret))
+    if err != nil {
+        return "", "", err
+    }
+
+    return guestID, signedToken, nil
 }
 
 func GenerateRefreshJWT(userID string) (string, error) {

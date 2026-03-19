@@ -13,7 +13,7 @@ func main() {
 	
 	defer s.DB.Stop()
 	
-	if err := http.ListenAndServe(":3000", s.Router); err != nil {
+	if err := http.ListenAndServe(":8080", s.Router); err != nil {
     panic(err)
 	}
 }
