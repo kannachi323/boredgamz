@@ -5,37 +5,41 @@ import (
 )
 
 type GomokuLobbyData struct {
-  Name      string `json:"name"`
-  Mode      string  `json:"mode"`
-  OpeningRule string `json:"openingRule,omitempty"`
-  SwapRuleEnabled bool `json:"swapRuleEnabled,omitempty"`
-  FirstMoveCenterEnabled bool `json:"firstMoveCenterEnabled,omitempty"`
-  BotDifficulty string `json:"botDifficulty,omitempty"`
-  TimeControl string `json:"timeControl"`
-  PlayerID string `json:"playerID"`
-  PlayerColor string `json:"playerColor"`
-  PlayerName string   `json:"playerName"`
+	Name                   string `json:"name"`
+	Mode                   string `json:"mode"`
+	OpeningRule            string `json:"openingRule,omitempty"`
+	SwapRuleEnabled        bool   `json:"swapRuleEnabled,omitempty"`
+	FirstMoveCenterEnabled bool   `json:"firstMoveCenterEnabled,omitempty"`
+	BotDifficulty          string `json:"botDifficulty,omitempty"`
+	TimeControl            string `json:"timeControl"`
+	PlayerID               string `json:"playerID"`
+	PlayerColor            string `json:"playerColor"`
+	PlayerName             string `json:"playerName"`
 }
 
 type GomokuMoveData struct {
-  Move  Move        `json:"move"`
+	Move Move `json:"move"`
+}
+
+type GomokuChatData struct {
+	Content string `json:"content"`
 }
 
 type GomokuGameStateData struct {
-  GameState *GomokuGameState `json:"gameState"`
+	GameState *GomokuGameState `json:"gameState"`
 }
 
 type GomokuReconnectData struct {
-  LobbyID string `json:"lobbyID"`
-  PlayerID string `json:"playerID"`
+	LobbyID  string `json:"lobbyID"`
+	PlayerID string `json:"playerID"`
 }
 
 type GomokuClientRequest struct {
-  Type string      `json:"type"`
-  Data json.RawMessage `json:"data"`
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
 }
 
 type GomokuServerResponse struct {
-  Type string `json:"type"`
-  Data json.RawMessage  `json:"data"`
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
 }

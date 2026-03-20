@@ -1,15 +1,33 @@
 import { useState } from 'react';
+import { useGomokuStore } from '@/stores/Gomoku/useGomokuStore';
 
-import { ChatMessage } from '../../types'
+export function ChatBox() {
+  const [draft, setDraft] = useState('')
+  const { messages, send, conn, player } = useGomokuStore()
 
-export function ChatBox({ username }: { username: string }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const submitMessage = () => {
+    const content = draft.trim()
+    if (!content || !conn || conn.readyState !== WebSocket.OPEN) {
+      return
+    }
+
+    send({
+      type: "chat",
+      data: { content },
+    })
+    setDraft('')
+  }
 
   return (
     <div className="w-full h-full bg-[#363430] flex flex-col">
       <div className="flex-1 overflow-y-auto p-2 text-white">
         {messages.map((message, idx) => 
-          <p key={idx}>{message.data.sender}: {message.data.content}</p>
+          <p key={`${message.sentAt}-${idx}`}>
+            <span className={message.senderID === player.playerID ? "text-[#C3B299] font-semibold" : "text-white font-semibold"}>
+              {message.senderName}
+            </span>
+            : {message.content}
+          </p>
         )}
       </div>
 
@@ -18,6 +36,8 @@ export function ChatBox({ username }: { username: string }) {
           placeholder="Type a message here..."
           className="w-full resize-none overflow-hidden bg-transparent text-white outline-none max-h-40"
           rows={1}
+          value={draft}
+          onChange={(e) => setDraft(e.currentTarget.value)}
           onInput={(e) => {
             e.currentTarget.style.height = "auto";
             e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
@@ -25,19 +45,8 @@ export function ChatBox({ username }: { username: string }) {
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              const content = e.currentTarget.value.trim();
-              if (content !== "") {
-                setMessages(prev => [
-                ...prev,
-                {
-                  type: "msg",
-                  data: { content: content, sender: username }
-                }
-              ]);
-
-                e.currentTarget.value = "";
-                e.currentTarget.style.height = "auto";
-              }
+              submitMessage();
+              e.currentTarget.style.height = "auto";
             }
           }}
         />

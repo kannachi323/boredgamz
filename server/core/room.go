@@ -14,17 +14,18 @@ type RoomController interface {
 }
 
 type Room struct {
-	RoomID 	  string
-	Players	 	[]*Player
+	RoomID    string
+	Players   []*Player
 	Events    chan interface{}
+	Done      chan struct{}
 	CloseOnce sync.Once
 
 	DB *db.Database
 }
 
-type RoomManager struct { 
+type RoomManager struct {
 	PlayerRoomMap map[string]RoomController
-	mu	sync.RWMutex
+	mu            sync.RWMutex
 }
 
 func NewRoomManager() *RoomManager {
