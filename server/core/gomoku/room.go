@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,9 +18,9 @@ import (
 )
 
 type GomokuGameEvent struct {
-	Type string
+	Type     string
 	PlayerID string
-	Data []byte
+	Data     []byte
 }
 
 type GomokuTimeoutEvent struct {
@@ -28,11 +29,12 @@ type GomokuTimeoutEvent struct {
 
 type GomokuRoom struct {
 	*core.Room
-	GameState *GomokuGameState
-	RoomManager *core.RoomManager
-	BotPlayerID string
+	GameState     *GomokuGameState
+	RoomManager   *core.RoomManager
+	BotPlayerID   string
 	BotDifficulty string
-	mu sync.Mutex;
+	finishOnce    sync.Once
+	mu            sync.Mutex
 }
 
 func NewGomokuRoom(
@@ -47,22 +49,22 @@ func NewGomokuRoom(
 ) *GomokuRoom {
 	newGomokuRoom := &GomokuRoom{
 		Room: &core.Room{
-			DB: db,
-			RoomID: uuid.New().String(),
+			DB:      db,
+			RoomID:  uuid.New().String(),
 			Players: []*core.Player{p1, p2},
-			Events: make(chan interface{}, 100),
+			Events:  make(chan interface{}, 100),
+			Done:    make(chan struct{}),
 		},
-		GameState: NewGomokuGame(name, p1, p2, openingRule, swapRuleEnabled, firstMoveCenterEnabled),
+		GameState:   NewGomokuGame(name, p1, p2, openingRule, swapRuleEnabled, firstMoveCenterEnabled),
 		RoomManager: roomManager,
 	}
 
 	return newGomokuRoom
 }
 
-
-////////////////////////////
-//ROOM LIFECYCLE METHODS
-///////////////////////////
+// //////////////////////////
+// ROOM LIFECYCLE METHODS
+// /////////////////////////
 func (room *GomokuRoom) Start() {
 	go room.watchIncoming()
 	go room.watchDisconnections()
@@ -84,30 +86,32 @@ func (room *GomokuRoom) Start() {
 	room.scheduleBotTurn()
 }
 
-
 func (room *GomokuRoom) Close() {
-	for _, player := range room.Players {
-		if room.RoomManager != nil {
-			room.RoomManager.RemovePlayerFromRoom(player.PlayerID)
+	room.CloseOnce.Do(func() {
+		close(room.Done)
+		for _, player := range room.Players {
+			if room.RoomManager != nil {
+				room.RoomManager.RemovePlayerFromRoom(player.PlayerID)
+			}
+			player.ClosePlayer()
 		}
-		player.ClosePlayer()
-	}
-	close(room.Events)
-	log.Println("Gomoku room closed:", room.RoomID)
-
+		log.Println("Gomoku room closed:", room.RoomID)
+	})
 }
 
-func (room *GomokuRoom) Broadcast(res []byte)  {
+func (room *GomokuRoom) Broadcast(res []byte) {
 	for _, player := range room.Players {
-		if player.Disconnected.Load() { continue }
+		if player.Disconnected.Load() {
+			continue
+		}
 		room.Send(player, res)
 	}
 }
 
 func (room *GomokuRoom) Send(p *core.Player, res []byte) {
-	if p.Disconnected.Load() { 
+	if p.Disconnected.Load() {
 		log.Println("player is still disconnected")
-		return 
+		return
 	}
 
 	select {
@@ -118,19 +122,25 @@ func (room *GomokuRoom) Send(p *core.Player, res []byte) {
 
 func (room *GomokuRoom) HandleEvent(raw interface{}) {
 	select {
+	case <-room.Done:
+		return
 	case room.Events <- raw:
 	default:
 	}
 }
 
-////////////////////////////
-//EVENT LOOP
-///////////////////////////
+// //////////////////////////
+// EVENT LOOP
+// /////////////////////////
 func (room *GomokuRoom) eventLoop() {
 	for ev := range room.Events {
+		select {
+		case <-room.Done:
+			return
+		default:
+		}
+
 		switch e := ev.(type) {
-		case []byte:
-			room.handleClientRequest(e)
 		case GomokuTimeoutEvent:
 			room.handleTimeout(e)
 		case GomokuGameEvent:
@@ -146,30 +156,48 @@ func (room *GomokuRoom) eventLoop() {
 	}
 }
 
-////////////////////////////
-//WATCHERS
-///////////////////////////
+// //////////////////////////
+// WATCHERS
+// /////////////////////////
 func (room *GomokuRoom) watchIncoming() {
-	if len(room.Players) != 2 { return }
+	if len(room.Players) != 2 {
+		return
+	}
 	p1 := room.Players[0]
 	p2 := room.Players[1]
 
 	for {
-		if p1.Disconnected.Load() && p2.Disconnected.Load() { return }
 		select {
+		case <-room.Done:
+			return
+		default:
+		}
+
+		if p1.Disconnected.Load() && p2.Disconnected.Load() {
+			return
+		}
+		select {
+		case <-room.Done:
+			return
 		case raw, ok := <-p1.Incoming:
-			if ok { room.HandleEvent(raw) }
+			if ok {
+				room.HandleEvent(GomokuGameEvent{PlayerID: p1.PlayerID, Data: raw})
+			}
 		case raw, ok := <-p2.Incoming:
-			if ok { room.HandleEvent(raw) }
+			if ok {
+				room.HandleEvent(GomokuGameEvent{PlayerID: p2.PlayerID, Data: raw})
+			}
 		}
 	}
 }
 
 func (room *GomokuRoom) watchDisconnections() {
-	if len(room.Players) != 2 { return }
+	if len(room.Players) != 2 {
+		return
+	}
 	p1 := room.Players[0]
 	p2 := room.Players[1]
-	
+
 	var (
 		p1Disc time.Duration
 		p2Disc time.Duration
@@ -178,10 +206,20 @@ func (room *GomokuRoom) watchDisconnections() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
+	for {
+		select {
+		case <-room.Done:
+			return
+		case <-ticker.C:
+		}
+
+		if room.GameState.Status.Code == "offline" {
+			return
+		}
+
 		if p1.Disconnected.Load() {
 			p1Disc += time.Second
-			if p1Disc >= 30 * time.Second {
+			if p1Disc >= 30*time.Second {
 				room.HandleEvent(GomokuTimeoutEvent{PlayerID: p1.PlayerID})
 				return
 			}
@@ -191,7 +229,7 @@ func (room *GomokuRoom) watchDisconnections() {
 
 		if p2.Disconnected.Load() {
 			p2Disc += time.Second
-			if p2Disc >= 30 * time.Second {
+			if p2Disc >= 30*time.Second {
 				room.HandleEvent(GomokuTimeoutEvent{PlayerID: p2.PlayerID})
 				return
 			}
@@ -201,18 +239,19 @@ func (room *GomokuRoom) watchDisconnections() {
 	}
 }
 
-
-
-////////////////////////////
-//HANDLERS
-///////////////////////////
-func (room *GomokuRoom) handleClientRequest(raw []byte) {
+// //////////////////////////
+// HANDLERS
+// /////////////////////////
+func (room *GomokuRoom) handleClientRequest(playerID string, raw []byte) {
 	var req GomokuClientRequest
 	if err := json.Unmarshal(raw, &req); err != nil {
 		return
 	}
 	switch req.Type {
 	case "move":
+		if room.GameState.Turn != playerID {
+			return
+		}
 		var moveData GomokuMoveData
 		if json.Unmarshal(req.Data, &moveData) != nil {
 			return
@@ -227,7 +266,30 @@ func (room *GomokuRoom) handleClientRequest(raw []byte) {
 		resBytes, _ := json.Marshal(resp)
 		room.Broadcast(resBytes)
 		room.scheduleBotTurn()
+	case "chat":
+		var chatData GomokuChatData
+		if json.Unmarshal(req.Data, &chatData) != nil {
+			return
+		}
+
+		message := room.buildChatMessage(playerID, &chatData)
+		if message == nil {
+			return
+		}
+
+		room.GameState.Messages = append(room.GameState.Messages, message)
+
+		data, _ := json.Marshal(message)
+		resp := &GomokuServerResponse{
+			Type: "chat",
+			Data: data,
+		}
+		resBytes, _ := json.Marshal(resp)
+		room.Broadcast(resBytes)
 	case "swap":
+		if room.GameState.Turn != playerID {
+			return
+		}
 		if err := HandleGomokuSwap(room.GameState); err != nil {
 			return
 		}
@@ -243,7 +305,6 @@ func (room *GomokuRoom) handleClientRequest(raw []byte) {
 	}
 }
 
-
 func (room *GomokuRoom) handleTimeout(ev GomokuTimeoutEvent) {
 	UpdateGameStatus(room.GameState, "timeout", ev.PlayerID)
 	data, _ := json.Marshal(room.GameState)
@@ -256,7 +317,30 @@ func (room *GomokuRoom) handleTimeout(ev GomokuTimeoutEvent) {
 }
 
 func (room *GomokuRoom) handleGomokuEvent(ev GomokuGameEvent) {
-	_ = ev
+	room.handleClientRequest(ev.PlayerID, ev.Data)
+}
+
+func (room *GomokuRoom) buildChatMessage(playerID string, chatData *GomokuChatData) *ChatMessage {
+	if chatData == nil {
+		return nil
+	}
+
+	content := strings.TrimSpace(chatData.Content)
+	if content == "" || len(content) > 500 {
+		return nil
+	}
+
+	sender := GetPlayerByID(room.GameState, playerID)
+	if sender == nil {
+		return nil
+	}
+
+	return &ChatMessage{
+		SenderID:   sender.PlayerID,
+		SenderName: sender.PlayerName,
+		Content:    content,
+		SentAt:     time.Now().UTC().Format(time.RFC3339),
+	}
 }
 
 func (room *GomokuRoom) scheduleBotTurn() {
@@ -391,18 +475,21 @@ func (room *GomokuRoom) findWinningMove(color string) *Move {
 }
 
 func (room *GomokuRoom) handleGameFinished() {
-	room.CloseOnce.Do(func() {
+	room.finishOnce.Do(func() {
 		if room.DB == nil || room.DB.Pool == nil {
 			log.Println("Skipping gomoku game persistence: database is not initialized")
 		} else {
+			gameRow := room.GameState.ToRow()
+
 			// persist the game by saving to database
 			go func() {
-				err := gomokudb.InsertGame(
+				err := gomokudb.SaveGameWithMessages(
 					room.DB,
 					room.GameState.GameID,
 					room.GameState.Players[0].PlayerID,
 					room.GameState.Players[1].PlayerID,
-					room.GameState.ToRow(),
+					gameRow,
+					gameRow.Messages,
 				)
 				if err != nil {
 					log.Println("Error saving finished gomoku game to database:", err)
@@ -421,84 +508,110 @@ func (room *GomokuRoom) handleGameFinished() {
 		resBytes, _ := json.Marshal(res)
 		room.Broadcast(resBytes)
 
+		go func() {
+			time.Sleep(2 * time.Second)
+			room.Close()
+		}()
+
 	})
 }
 
-////////////////////////////
-//CLOCK MANAGEMENT
-///////////////////////////
+// //////////////////////////
+// CLOCK MANAGEMENT
+// /////////////////////////
 func (room *GomokuRoom) runClock() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
+	for {
+		select {
+		case <-room.Done:
+			return
+		case <-ticker.C:
+		}
+
+		if room.GameState.Status.Code == "offline" {
+			return
+		}
+
 		room.tickActivePlayerClock()
 	}
 }
 
 func (room *GomokuRoom) tickActivePlayerClock() {
-	if room.GameState.Status.Code != "online" { return }
+	if room.GameState.Status.Code != "online" {
+		return
+	}
 
 	currPlayer := GetPlayerByID(room.GameState, room.GameState.Turn)
 
-
-    if currPlayer.Clock.Remaining <= 0 {
-        currPlayer.Clock.Remaining = 0
-        room.HandleEvent(GomokuTimeoutEvent{PlayerID: currPlayer.PlayerID})
-    } else {
+	if currPlayer.Clock.Remaining <= 0 {
+		currPlayer.Clock.Remaining = 0
+		room.HandleEvent(GomokuTimeoutEvent{PlayerID: currPlayer.PlayerID})
+	} else {
 		currPlayer.Clock.Remaining -= time.Second
 	}
 }
 
-////////////////////////////
-//DATABASE MODEL PERSISTENCE
-///////////////////////////
+// //////////////////////////
+// DATABASE MODEL PERSISTENCE
+// /////////////////////////
 func (gs *GomokuGameState) ToRow() *model.GomokuGameStateRow {
-    moves := make([]*model.Move, len(gs.Moves))
-    for i, m := range gs.Moves {
-        moves[i] = &model.Move{
-            Row:   m.Row,
-            Col:   m.Col,
-            Color: m.Color,
-        }
-    }
-
+	moves := make([]*model.Move, len(gs.Moves))
+	for i, m := range gs.Moves {
+		moves[i] = &model.Move{
+			Row:   m.Row,
+			Col:   m.Col,
+			Color: m.Color,
+		}
+	}
 
 	var winner *model.Player
 	if gs.Status.Winner != nil {
 		winner = &model.Player{
-			PlayerID: gs.Status.Winner.PlayerID,
+			PlayerID:   gs.Status.Winner.PlayerID,
 			PlayerName: gs.Status.Winner.PlayerName,
-			Color: gs.Status.Winner.Color,
+			Color:      gs.Status.Winner.Color,
 		}
 	}
 
 	var players []*model.Player
 	for _, p := range gs.Players {
 		players = append(players, &model.Player{
-			PlayerID: p.PlayerID,
+			PlayerID:   p.PlayerID,
 			PlayerName: p.PlayerName,
-			Color: p.Color,
+			Color:      p.Color,
 		})
 	}
-	
-    return &model.GomokuGameStateRow{
-		GameID: gs.GameID,
+
+	messages := make([]*model.ChatMessage, len(gs.Messages))
+	for i, m := range gs.Messages {
+		messages[i] = &model.ChatMessage{
+			SenderID:   m.SenderID,
+			SenderName: m.SenderName,
+			Content:    m.Content,
+			SentAt:     m.SentAt,
+		}
+	}
+
+	return &model.GomokuGameStateRow{
+		GameID:    gs.GameID,
 		BoardSize: gs.Board.Size,
-		Players: players,
-        Moves:  moves,
-        Result: gs.Status.Result,
-        Winner: winner,
-    }
+		Players:   players,
+		Moves:     moves,
+		Messages:  messages,
+		Result:    gs.Status.Result,
+		Winner:    winner,
+	}
 }
 
-////////////////////////////
-//CONNECTION MANAGEMENT
-///////////////////////////
+// //////////////////////////
+// CONNECTION MANAGEMENT
+// /////////////////////////
 func (room *GomokuRoom) ReconnectPlayer(playerID string, conn *websocket.Conn) error {
 	room.mu.Lock()
 	defer room.mu.Unlock()
-	
+
 	var player *core.Player
 	for _, p := range room.Players {
 		if p.PlayerID == playerID {
@@ -506,32 +619,32 @@ func (room *GomokuRoom) ReconnectPlayer(playerID string, conn *websocket.Conn) e
 			break
 		}
 	}
-	
+
 	if player == nil {
 		return fmt.Errorf("player not found in room")
 	}
 
 	log.Println("Reconnecting player:", playerID, "to room:", room.RoomID)
 	player.ReconnectPlayer(conn)
-	
+
 	resData, err := json.Marshal(room.GameState)
 	if err != nil {
 		return err
 	}
-	
+
 	res := &GomokuServerResponse{
 		Type: "update",
 		Data: resData,
 	}
-	
+
 	resBytes, err := json.Marshal(res)
 	if err != nil {
 		return err
 	}
-	
+
 	// Send game state to reconnected player
 	room.Send(player, resBytes)
-	
+
 	log.Println("Game state replayed to:", playerID)
 	return nil
 }

@@ -28,6 +28,7 @@ export interface GameState {
   status: GameStatus;
   lastMove: Move | null;
   moves: Move[];
+  messages: ChatMessage[];
 }
 
 export interface AnalysisState {
@@ -64,11 +65,10 @@ export interface Stone {
 }
 
 export interface ChatMessage {
-  type: "msg"
-  data: {
-    sender: string
-    content: string
-  }
+  senderID: string
+  senderName: string
+  content: string
+  sentAt: string
 }
 
 export interface LobbyRequest {
@@ -111,9 +111,17 @@ export interface SwapRequest {
   data: Record<string, never>
 }
 
+export interface ChatRequest {
+  type: "chat"
+  data: {
+    content: string
+  }
+}
+
 export type ClientRequest = 
   | MoveRequest
   | SwapRequest
+  | ChatRequest
   | LobbyRequest
   | ReconnectRequest
 
@@ -121,6 +129,7 @@ export type ClientRequest =
 export type ServerResponse =
   | { type: "update"; data: GameState }
   | { type: "error"; data: ErrorData }
+  | { type: "chat"; data: ChatMessage }
   | { type: string; data: unknown }
 
 
@@ -138,9 +147,9 @@ export interface GameStateRow {
   boardSize: number;
   players: PlayerRow[]
   moves: Move[];
+  messages: ChatMessage[];
   result: "win" | "draw" | "loss";
   winner: PlayerRow | null;
 }
-
 
 

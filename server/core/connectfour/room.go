@@ -6,14 +6,17 @@ import (
 	"boredgamz/db"
 	cfdb "boredgamz/db/connectfour"
 	"encoding/json"
+	"fmt"
 	"log"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 )
 
 type ConnectFourGameEvent struct {
-	Type     string
 	PlayerID string
 	Data     []byte
 }
@@ -24,33 +27,32 @@ type ConnectFourTimeoutEvent struct {
 
 type ConnectFourRoom struct {
 	*core.Room
-	GameState *ConnectFourGameState
+	GameState   *ConnectFourGameState
+	RoomManager *core.RoomManager
+	finishOnce  sync.Once
+	mu          sync.Mutex
 }
 
-func NewConnectFourRoom(p1, p2 *core.Player, gameType string, db *db.Database) core.RoomController {
-	newRoom := &ConnectFourRoom{
+func NewConnectFourRoom(p1, p2 *core.Player, gameType string, db *db.Database, roomManager *core.RoomManager) *ConnectFourRoom {
+	return &ConnectFourRoom{
 		Room: &core.Room{
 			DB:      db,
 			RoomID:  uuid.New().String(),
 			Players: []*core.Player{p1, p2},
 			Events:  make(chan interface{}, 100),
+			Done:    make(chan struct{}),
 		},
-		GameState: NewConnectFourGame(gameType, p1, p2),
+		GameState:   NewConnectFourGame(gameType, p1, p2),
+		RoomManager: roomManager,
 	}
-
-	return newRoom
 }
 
-////////////////////////////
-// ROOM LIFECYCLE METHODS
-///////////////////////////
 func (room *ConnectFourRoom) Start() {
 	go room.watchIncoming()
 	go room.watchDisconnections()
 	go room.runClock()
 	go room.eventLoop()
 
-	// Broadcast initial game state
 	resData, _ := json.Marshal(room.GameState)
 	res := &ConnectFourServerResponse{
 		Type: "update",
@@ -64,11 +66,16 @@ func (room *ConnectFourRoom) Start() {
 }
 
 func (room *ConnectFourRoom) Close() {
-	for _, player := range room.Players {
-		player.ClosePlayer()
-	}
-	close(room.Events)
-	log.Println("Connect Four room closed:", room.RoomID)
+	room.CloseOnce.Do(func() {
+		close(room.Done)
+		for _, player := range room.Players {
+			if room.RoomManager != nil {
+				room.RoomManager.RemovePlayerFromRoom(player.PlayerID)
+			}
+			player.ClosePlayer()
+		}
+		log.Println("Connect Four room closed:", room.RoomID)
+	})
 }
 
 func (room *ConnectFourRoom) Broadcast(res []byte) {
@@ -93,25 +100,26 @@ func (room *ConnectFourRoom) Send(p *core.Player, res []byte) {
 
 func (room *ConnectFourRoom) HandleEvent(raw interface{}) {
 	select {
+	case <-room.Done:
+		return
 	case room.Events <- raw:
 	default:
 	}
 }
 
-////////////////////////////
-// EVENT LOOP
-///////////////////////////
 func (room *ConnectFourRoom) eventLoop() {
 	for ev := range room.Events {
+		select {
+		case <-room.Done:
+			return
+		default:
+		}
+
 		switch e := ev.(type) {
-		case []byte:
-			room.handleClientRequest(e)
 		case ConnectFourTimeoutEvent:
 			room.handleTimeout(e)
 		case ConnectFourGameEvent:
 			room.handleConnectFourEvent(e)
-		default:
-			// unknown event → ignore
 		}
 
 		if room.GameState.Status.Code == "offline" {
@@ -121,9 +129,6 @@ func (room *ConnectFourRoom) eventLoop() {
 	}
 }
 
-////////////////////////////
-// WATCHERS
-///////////////////////////
 func (room *ConnectFourRoom) watchIncoming() {
 	if len(room.Players) != 2 {
 		return
@@ -132,20 +137,27 @@ func (room *ConnectFourRoom) watchIncoming() {
 	p2 := room.Players[1]
 
 	for {
+		select {
+		case <-room.Done:
+			return
+		default:
+		}
+
 		if p1.Disconnected.Load() && p2.Disconnected.Load() {
 			return
 		}
+
 		select {
+		case <-room.Done:
+			return
 		case raw, ok := <-p1.Incoming:
 			if ok {
-				room.HandleEvent(raw)
+				room.HandleEvent(ConnectFourGameEvent{PlayerID: p1.PlayerID, Data: raw})
 			}
 		case raw, ok := <-p2.Incoming:
 			if ok {
-				room.HandleEvent(raw)
+				room.HandleEvent(ConnectFourGameEvent{PlayerID: p2.PlayerID, Data: raw})
 			}
-		default:
-			// no messages
 		}
 	}
 }
@@ -165,7 +177,17 @@ func (room *ConnectFourRoom) watchDisconnections() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
+	for {
+		select {
+		case <-room.Done:
+			return
+		case <-ticker.C:
+		}
+
+		if room.GameState.Status.Code == "offline" {
+			return
+		}
+
 		if p1.Disconnected.Load() {
 			p1Disc += time.Second
 			if p1Disc >= 30*time.Second {
@@ -188,10 +210,7 @@ func (room *ConnectFourRoom) watchDisconnections() {
 	}
 }
 
-////////////////////////////
-// HANDLERS
-///////////////////////////
-func (room *ConnectFourRoom) handleClientRequest(raw []byte) {
+func (room *ConnectFourRoom) handleClientRequest(playerID string, raw []byte) {
 	var req ConnectFourClientRequest
 	if err := json.Unmarshal(raw, &req); err != nil {
 		return
@@ -199,16 +218,38 @@ func (room *ConnectFourRoom) handleClientRequest(raw []byte) {
 
 	switch req.Type {
 	case "move":
+		if room.GameState.Turn != playerID {
+			return
+		}
 		var moveData ConnectFourMoveData
 		if json.Unmarshal(req.Data, &moveData) != nil {
 			return
 		}
-
 		HandleConnectFourMove(room.GameState, moveData.Column)
 
 		data, _ := json.Marshal(room.GameState)
 		resp := &ConnectFourServerResponse{
 			Type: "update",
+			Data: data,
+		}
+		resBytes, _ := json.Marshal(resp)
+		room.Broadcast(resBytes)
+	case "chat":
+		var chatData ConnectFourChatData
+		if json.Unmarshal(req.Data, &chatData) != nil {
+			return
+		}
+
+		message := room.buildChatMessage(playerID, &chatData)
+		if message == nil {
+			return
+		}
+
+		room.GameState.Messages = append(room.GameState.Messages, message)
+
+		data, _ := json.Marshal(message)
+		resp := &ConnectFourServerResponse{
+			Type: "chat",
 			Data: data,
 		}
 		resBytes, _ := json.Marshal(resp)
@@ -228,25 +269,54 @@ func (room *ConnectFourRoom) handleTimeout(ev ConnectFourTimeoutEvent) {
 }
 
 func (room *ConnectFourRoom) handleConnectFourEvent(ev ConnectFourGameEvent) {
-	return
+	room.handleClientRequest(ev.PlayerID, ev.Data)
+}
+
+func (room *ConnectFourRoom) buildChatMessage(playerID string, chatData *ConnectFourChatData) *ChatMessage {
+	if chatData == nil {
+		return nil
+	}
+
+	content := strings.TrimSpace(chatData.Content)
+	if content == "" || len(content) > 500 {
+		return nil
+	}
+
+	sender := GetPlayerByID(room.GameState, playerID)
+	if sender == nil {
+		return nil
+	}
+
+	return &ChatMessage{
+		SenderID:   sender.PlayerID,
+		SenderName: sender.PlayerName,
+		Content:    content,
+		SentAt:     time.Now().UTC().Format(time.RFC3339),
+	}
 }
 
 func (room *ConnectFourRoom) handleGameFinished() {
-	room.CloseOnce.Do(func() {
-		go func() {
-			err := cfdb.InsertGame(
-				room.DB,
-				room.GameState.GameID,
-				room.GameState.Players[0].PlayerID,
-				room.GameState.Players[1].PlayerID,
-				room.GameState.ToRow(),
-			)
-			if err != nil {
-				log.Println("Error saving finished Connect Four game to database:", err)
-			} else {
-				log.Println("Finished Connect Four game saved:", room.GameState.GameID)
-			}
-		}()
+	room.finishOnce.Do(func() {
+		if room.DB == nil || room.DB.Pool == nil {
+			log.Println("Skipping connect four persistence: database is not initialized")
+		} else {
+			gameRow := room.GameState.ToRow()
+			go func() {
+				err := cfdb.SaveGameWithMessages(
+					room.DB,
+					room.GameState.GameID,
+					room.GameState.Players[0].PlayerID,
+					room.GameState.Players[1].PlayerID,
+					gameRow,
+					gameRow.Messages,
+				)
+				if err != nil {
+					log.Println("Error saving finished Connect Four game to database:", err)
+				} else {
+					log.Println("Finished Connect Four game saved:", room.GameState.GameID)
+				}
+			}()
+		}
 
 		data, _ := json.Marshal(room.GameState)
 		res := &ConnectFourServerResponse{
@@ -255,17 +325,29 @@ func (room *ConnectFourRoom) handleGameFinished() {
 		}
 		resBytes, _ := json.Marshal(res)
 		room.Broadcast(resBytes)
+
+		go func() {
+			time.Sleep(2 * time.Second)
+			room.Close()
+		}()
 	})
 }
 
-////////////////////////////
-// CLOCK MANAGEMENT
-///////////////////////////
 func (room *ConnectFourRoom) runClock() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
+	for {
+		select {
+		case <-room.Done:
+			return
+		case <-ticker.C:
+		}
+
+		if room.GameState.Status.Code == "offline" {
+			return
+		}
+
 		room.tickActivePlayerClock()
 	}
 }
@@ -276,6 +358,9 @@ func (room *ConnectFourRoom) tickActivePlayerClock() {
 	}
 
 	currPlayer := GetPlayerByID(room.GameState, room.GameState.Turn)
+	if currPlayer == nil || currPlayer.Clock == nil {
+		return
+	}
 
 	if currPlayer.Clock.Remaining <= 0 {
 		currPlayer.Clock.Remaining = 0
@@ -285,9 +370,6 @@ func (room *ConnectFourRoom) tickActivePlayerClock() {
 	}
 }
 
-////////////////////////////
-// DATABASE PERSISTENCE
-///////////////////////////
 func (gs *ConnectFourGameState) ToRow() *model.ConnectFourGameStateRow {
 	moves := make([]*model.Move, len(gs.Moves))
 	for i, m := range gs.Moves {
@@ -316,11 +398,58 @@ func (gs *ConnectFourGameState) ToRow() *model.ConnectFourGameStateRow {
 		})
 	}
 
-	return &model.ConnectFourGameStateRow{
-		GameID: gs.GameID,
-		Players: players,
-		Moves:  moves,
-		Result: gs.Status.Result,
-		Winner: winner,
+	messages := make([]*model.ChatMessage, len(gs.Messages))
+	for i, m := range gs.Messages {
+		messages[i] = &model.ChatMessage{
+			SenderID:   m.SenderID,
+			SenderName: m.SenderName,
+			Content:    m.Content,
+			SentAt:     m.SentAt,
+		}
 	}
+
+	return &model.ConnectFourGameStateRow{
+		GameID:   gs.GameID,
+		Players:  players,
+		Moves:    moves,
+		Messages: messages,
+		Result:   gs.Status.Result,
+		Winner:   winner,
+	}
+}
+
+func (room *ConnectFourRoom) ReconnectPlayer(playerID string, conn *websocket.Conn) error {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	var player *core.Player
+	for _, p := range room.Players {
+		if p.PlayerID == playerID {
+			player = p
+			break
+		}
+	}
+
+	if player == nil {
+		return fmt.Errorf("player not found in room")
+	}
+
+	player.ReconnectPlayer(conn)
+
+	resData, err := json.Marshal(room.GameState)
+	if err != nil {
+		return err
+	}
+
+	res := &ConnectFourServerResponse{
+		Type: "update",
+		Data: resData,
+	}
+	resBytes, err := json.Marshal(res)
+	if err != nil {
+		return err
+	}
+
+	room.Send(player, resBytes)
+	return nil
 }

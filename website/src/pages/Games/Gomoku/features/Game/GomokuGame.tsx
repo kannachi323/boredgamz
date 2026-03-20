@@ -100,7 +100,7 @@ export default function GomokuGame() {
 
       {/* CHAT SECTION */}
       <section className="col-span-7 bg-[#433d3a] p-2 rounded-xl border border-[#1b1918] flex flex-col min-h-0">
-        <ChatBox username={player.playerName} />
+        <ChatBox />
       </section>
 
       <GameEnd />

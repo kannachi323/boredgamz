@@ -14,17 +14,25 @@ type ConnectFourGameStatus struct {
 	Winner *core.Player `json:"winner,omitempty"`
 }
 
+type ChatMessage struct {
+	SenderID   string `json:"senderID"`
+	SenderName string `json:"senderName"`
+	Content    string `json:"content"`
+	SentAt     string `json:"sentAt"`
+}
+
 // Game state
 type ConnectFourGameState struct {
-	GameID       string                   `json:"gameID"`
-	Board        *Board                   `json:"board"`
-	Players      []*core.Player           `json:"players"`
+	GameID       string                       `json:"gameID"`
+	Board        *Board                       `json:"board"`
+	Players      []*core.Player               `json:"players"`
 	PlayerClocks map[string]*core.PlayerClock `json:"-"`
-	Status       *ConnectFourGameStatus   `json:"status"`
-	LastMove     *Move                    `json:"lastMove"`
-	Turn         string                   `json:"turn"`
-	Timeout      chan struct{}            `json:"-"`
-	Moves        []*Move                  `json:"moves"`
+	Status       *ConnectFourGameStatus       `json:"status"`
+	LastMove     *Move                        `json:"lastMove"`
+	Turn         string                       `json:"turn"`
+	Timeout      chan struct{}                `json:"-"`
+	Moves        []*Move                      `json:"moves"`
+	Messages     []*ChatMessage               `json:"messages"`
 }
 
 // New game
@@ -48,6 +56,7 @@ func NewConnectFourGame(gameType string, p1 *core.Player, p2 *core.Player) *Conn
 		LastMove: nil,
 		Turn:     turn,
 		Moves:    make([]*Move, 0),
+		Messages: make([]*ChatMessage, 0),
 	}
 
 	return newGameState
@@ -61,7 +70,7 @@ func HandleConnectFourMove(gs *ConnectFourGameState, col int) {
 
 	UpdateMoves(gs, col)
 
-	if IsConnectFour(gs.Board.Stones, col, gs.Turn) {
+	if IsConnectFour(gs.Board.Stones, gs.LastMove) {
 		UpdateGameStatus(gs, "win", gs.Turn)
 		return
 	}
@@ -87,14 +96,18 @@ func UpdatePlayerTurn(gs *ConnectFourGameState) {
 
 func UpdateLastMove(gs *ConnectFourGameState, col int) error {
 	player := GetPlayerByID(gs, gs.Turn)
+	if player == nil {
+		return fmt.Errorf("invalid player")
+	}
+
 	row, ok := GetNextAvailableRow(gs.Board, col)
 	if !ok {
-		return fmt.Errorf("invalid move: col full")
+		return fmt.Errorf("invalid move")
 	}
 
 	move := &Move{
 		Row:   row,
-		Col: col,
+		Col:   col,
 		Color: player.Color,
 	}
 
@@ -124,7 +137,7 @@ func UpdateGameStatus(gs *ConnectFourGameState, statusType string, playerID stri
 		gs.Status = &ConnectFourGameStatus{
 			Result: "win",
 			Code:   "offline",
-			Winner: GetOpponent(gs, GetPlayerByID(gs, playerID).Color),
+			Winner: GetOpponent(gs, playerID),
 		}
 	}
 }

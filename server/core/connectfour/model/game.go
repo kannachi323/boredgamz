@@ -12,11 +12,19 @@ type Move struct {
 	Color  string `json:"color"`
 }
 
+type ChatMessage struct {
+	SenderID   string `json:"senderID"`
+	SenderName string `json:"senderName"`
+	Content    string `json:"content"`
+	SentAt     string `json:"sentAt"`
+}
+
 // ConnectFourGameStateRow represents a finished or persisted game
 type ConnectFourGameStateRow struct {
-	GameID  string    `json:"gameID"`
-	Players []*Player `json:"players"`
-	Moves   []*Move   `json:"moves"`
-	Result  string    `json:"result"`        // "win" or "draw"
-	Winner  *Player   `json:"winner,omitempty"` // nil if draw
+	GameID   string         `json:"gameID"`
+	Players  []*Player      `json:"players"`
+	Moves    []*Move        `json:"moves"`
+	Messages []*ChatMessage `json:"messages"`
+	Result   string         `json:"result"`
+	Winner   *Player        `json:"winner,omitempty"`
 }

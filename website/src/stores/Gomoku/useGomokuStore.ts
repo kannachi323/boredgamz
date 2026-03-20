@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { ServerResponse, GameState, Player, ClientRequest, Move, Board, AnalysisState, GameStateRow, Stone, LobbyRequest, ReconnectRequest } from '../../pages/Games/Gomoku/types.tsx'
+import { ServerResponse, GameState, Player, ClientRequest, Move, Board, AnalysisState, GameStateRow, Stone, LobbyRequest, ReconnectRequest, ChatMessage } from '../../pages/Games/Gomoku/types.tsx'
 import { createPlayer, createLobbyRequest } from './utils.ts'
 
 type GomokuConnectionStatus = "idle" | "connecting" | "queued" | "reconnecting" | "connected" | "error"
@@ -17,6 +17,7 @@ interface GomokuStore {
   lastConnectionIntent: ConnectionIntent | null
   player: Player
   opponent: Player
+  messages: ChatMessage[]
   analysis: AnalysisState
   showGameEndModal: boolean
  
@@ -26,6 +27,7 @@ interface GomokuStore {
   setGameState: (gameState: GameState) => void
   setPlayer: (player: Player) => void
   setOpponent: (opponent: Player) => void
+  setMessages: (messages: ChatMessage[]) => void
   startAnalysis: () => void
   exitAnalysis: () => void
   setAnalysisIndex: (idx: number) => void
@@ -53,6 +55,7 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
   lastConnectionIntent: null,
   player: createPlayer(),
   opponent: createPlayer(),
+  messages: [],
   analysis: { moves: [], board: null, active: false, index: 0 },
   showGameEndModal: false,
 
@@ -60,6 +63,7 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
   setGameState: (gameState: GameState) => set({ gameState }),
   setPlayer: (player: Player) => set({ player }),
   setOpponent: (opponent: Player) => set({ opponent }),
+  setMessages: (messages: ChatMessage[]) => set({ messages }),
   clearConnectionError: () => set({ connectionError: null }),
   markConnectionError: (message: string) => set({
     connectionStatus: "error",
@@ -107,7 +111,10 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
     if (res.ok) {
       const data = await res.json();
       const newGameState = buildGameState(data as GameStateRow);
-      set({ gameState: newGameState as GameState });
+      set({
+        gameState: newGameState as GameState,
+        messages: newGameState?.messages || [],
+      });
     } else {
       console.error("Failed to fetch game");
     }
@@ -130,6 +137,7 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
     connectionStatus: "connecting",
     connectionError: null,
     lastConnectionIntent: intent,
+    messages: [],
   });
 
     socket.onopen = () => {
@@ -207,6 +215,7 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
       connectionStatus: "reconnecting",
       connectionError: null,
       lastConnectionIntent: intent,
+      messages: [],
     });
 
     socket.onopen = () => {
@@ -269,6 +278,7 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
         console.log(payload);
         set({
           gameState: payload.data as GameState,
+          messages: (payload.data as GameState).messages || [],
           connectionStatus: "connected",
           connectionError: null,
         });
@@ -289,7 +299,15 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
       }
 
       case 'chat':
-        console.log('Chat message:', payload)
+        set((state) => {
+          const nextMessages = [...state.messages, payload.data as ChatMessage];
+          return {
+            messages: nextMessages,
+            gameState: state.gameState
+              ? { ...state.gameState, messages: nextMessages }
+              : state.gameState,
+          };
+        })
         break
         
     }
@@ -371,6 +389,7 @@ export const useGomokuStore = create<GomokuStore>((set, get) => ({
       },
       lastMove: data.moves.length > 0 ? data.moves[data.moves.length - 1] : null,
       moves: data.moves,
+      messages: data.messages || [],
     };
 
     console.log(newGameState);

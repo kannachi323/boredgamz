@@ -14,14 +14,14 @@ type Server struct {
 	Router       *chi.Mux
 	APIRouter    *chi.Mux
 	LobbyManager *core.LobbyManager
-	DB	*db.Database
+	DB           *db.Database
 }
 
 func CreateServer() *Server {
 	s := &Server{
-		Router: chi.NewRouter(),
+		Router:       chi.NewRouter(),
 		LobbyManager: core.NewLobbyManager(),
-		DB: &db.Database{},
+		DB:           &db.Database{},
 	}
 	s.Router.Route("/api", func(r chi.Router) {
 		s.APIRouter = r.(*chi.Mux)
@@ -41,12 +41,12 @@ func (s *Server) MountDatabase() {
 	}
 }
 
-func (s* Server) MountLobbies() {
+func (s *Server) MountLobbies() {
 	//IMPORTANT: Do not remove this lobby registration
 	s.MountGomokuLobbies()
-	
-}
+	s.MountConnectFourLobbies()
 
+}
 
 func (s *Server) MountHandlers() {
 	s.APIRouter.Use(cors.Handler(cors.Options{
@@ -57,12 +57,11 @@ func (s *Server) MountHandlers() {
 		AllowCredentials: true,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-	
+
 	//DO NOT REMOVE THIS
 	s.APIRouter.Get("/hello", api.HelloWorld())
-	
+
 	s.MountAuthHandlers()
 	s.MountGomokuHandlers()
+	s.MountConnectFourHandlers()
 }
-
-

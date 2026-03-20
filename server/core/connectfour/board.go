@@ -1,18 +1,18 @@
 package connectfour
 
 type Stone struct {
-	Color string
+	Color string `json:"color"`
 }
 
 type Board struct {
-	Rows   int
-	Cols   int
-	Stones [][]*Stone
+	Rows   int        `json:"rows"`
+	Cols   int        `json:"cols"`
+	Stones [][]*Stone `json:"stones"`
 }
 
 type Move struct {
-	Row int `json:"row"`
-	Col int `json:"col"`
+	Row   int    `json:"row"`
+	Col   int    `json:"col"`
 	Color string `json:"color"`
 }
 
@@ -31,6 +31,10 @@ func NewEmptyBoard(rows, cols int) *Board {
 
 // Get the next available row for a given column
 func GetNextAvailableRow(board *Board, col int) (int, bool) {
+	if col < 0 || col >= board.Cols {
+		return -1, false
+	}
+
 	for r := board.Rows - 1; r >= 0; r-- { // bottom-up
 		if board.Stones[r][col] == nil {
 			return r, true
@@ -55,26 +59,15 @@ func IsDraw(board *Board) bool {
 }
 
 // Check for 4 in a row from last move
-func IsConnectFour(stones [][]*Stone, moveCol int, playerID string) bool {
-	row, ok := getLastMoveRow(stones, moveCol)
-	if !ok {
+func IsConnectFour(stones [][]*Stone, move *Move) bool {
+	if move == nil || !inBounds(stones, move.Row, move.Col) || stones[move.Row][move.Col] == nil {
 		return false
 	}
-	color := stones[row][moveCol].Color
-	return checkDirection(stones, row, moveCol, color, 0, 1) || // horizontal
-		checkDirection(stones, row, moveCol, color, 1, 0) || // vertical
-		checkDirection(stones, row, moveCol, color, 1, 1) || // diagonal /
-		checkDirection(stones, row, moveCol, color, 1, -1)   // diagonal \
-}
-
-// Helper: find last stone row in a column
-func getLastMoveRow(stones [][]*Stone, col int) (int, bool) {
-	for r := 0; r < len(stones); r++ {
-		if stones[r][col] != nil {
-			return r, true
-		}
-	}
-	return -1, false
+	color := stones[move.Row][move.Col].Color
+	return checkDirection(stones, move.Row, move.Col, color, 0, 1) || // horizontal
+		checkDirection(stones, move.Row, move.Col, color, 1, 0) || // vertical
+		checkDirection(stones, move.Row, move.Col, color, 1, 1) || // diagonal /
+		checkDirection(stones, move.Row, move.Col, color, 1, -1) // diagonal \
 }
 
 // Check 4 in a row along a given direction
