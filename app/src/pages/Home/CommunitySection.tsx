@@ -1,4 +1,4 @@
-
+import { SITE_LOCKDOWN_ENABLED } from "../../config/siteAccess";
 
 export function CommunitySection() {
   return (
@@ -7,15 +7,17 @@ export function CommunitySection() {
         <div className="md:flex md:items-center md:justify-between">
           <div className="mb-6 md:mb-0">
             <h2 className="text-3xl font-extrabold text-white">
-              Ready to Roll the Dice?
+              {SITE_LOCKDOWN_ENABLED ? "Public Preview Mode" : "Ready to Roll the Dice?"}
             </h2>
             <p className="mt-2 text-xl text-gray-400">
-              Join thousands of gamers. Share reviews, find local meetups, and track your collection.
+              {SITE_LOCKDOWN_ENABLED
+                ? "The homepage is open while the rest of the platform stays paused. Game rooms and community features will come back once I return to the project."
+                : "Join thousands of gamers. Share reviews, find local meetups, and track your collection."}
             </p>
           </div>
           <div className="flex-shrink-0">
-            <a href="#" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-bold rounded-xl text-white bg-green-600 hover:bg-green-700 shadow-xl transition-transform duration-300 transform hover:-translate-y-1">
-              Sign Up Now
+            <a href="#home" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-bold rounded-xl text-white bg-green-600 hover:bg-green-700 shadow-xl transition-transform duration-300 transform hover:-translate-y-1">
+              Back to top
             </a>
           </div>
         </div>

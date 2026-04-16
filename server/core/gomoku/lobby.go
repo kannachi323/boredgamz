@@ -6,19 +6,16 @@ import (
 	"container/list"
 	"log"
 	"sync"
-	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 type GomokuLobby struct {
 	*core.Lobby
 	WhiteQueue *list.List
 	BlackQueue *list.List
-	PlayerSlot  map[*core.Player]*GomokuLobbySlot
+	PlayerSlot map[*core.Player]*GomokuLobbySlot
 
 	Mu     sync.Mutex
-	wakeup chan struct{}           
+	wakeup chan struct{}
 }
 
 type GomokuLobbySlot struct {
@@ -29,16 +26,16 @@ type GomokuLobbySlot struct {
 func NewGomokuLobby(maxPlayers int, name string, db *db.Database) core.LobbyController {
 	gomokuLobby := &GomokuLobby{
 		Lobby: &core.Lobby{
-			LobbyName: name,
-			NumPlayers: 0,
-			MaxPlayers: maxPlayers,
+			LobbyName:   name,
+			NumPlayers:  0,
+			MaxPlayers:  maxPlayers,
 			RoomManager: core.NewRoomManager(),
-			DB: db,
+			DB:          db,
 		},
 		WhiteQueue: list.New(),
 		BlackQueue: list.New(),
 		PlayerSlot: make(map[*core.Player]*GomokuLobbySlot),
-		wakeup:    make(chan struct{}, 1),
+		wakeup:     make(chan struct{}, 1),
 	}
 
 	// start matcher goroutine
@@ -52,9 +49,9 @@ func (lobby *GomokuLobby) AddPlayer(player *core.Player) {
 	defer lobby.Mu.Unlock()
 
 	if !isPlayerConnected(player) {
-        log.Println("Player disconnected, not adding to queue:", player.PlayerID)
-        return
-    }
+		log.Println("Player disconnected, not adding to queue:", player.PlayerID)
+		return
+	}
 
 	if lobby.NumPlayers >= lobby.MaxPlayers {
 		return
@@ -100,7 +97,7 @@ func (lobby *GomokuLobby) RemovePlayer(player *core.Player) {
 	lobby.removePlayer(player)
 }
 
-func (lobby* GomokuLobby) removePlayer(player *core.Player) {
+func (lobby *GomokuLobby) removePlayer(player *core.Player) {
 	slot, ok := lobby.PlayerSlot[player]
 	if !ok {
 		return
@@ -110,7 +107,7 @@ func (lobby* GomokuLobby) removePlayer(player *core.Player) {
 		slot.Queue.Remove(slot.Element)
 	}
 	delete(lobby.PlayerSlot, player)
-	
+
 	if lobby.NumPlayers > 0 {
 		lobby.NumPlayers--
 	}
@@ -145,18 +142,19 @@ func (lobby *GomokuLobby) MatchPlayers() {
 	}
 }
 
-
 func (lobby *GomokuLobby) tryMatch() (*core.Player, *core.Player, bool) {
-    lobby.Mu.Lock()
-    defer lobby.Mu.Unlock()
+	lobby.Mu.Lock()
+	defer lobby.Mu.Unlock()
 
-    for lobby.WhiteQueue.Len() > 0 && lobby.BlackQueue.Len() > 0 {
-        wElem := lobby.WhiteQueue.Front()
-        bElem := lobby.BlackQueue.Front()
-		if (wElem == nil || bElem == nil) { continue }
+	for lobby.WhiteQueue.Len() > 0 && lobby.BlackQueue.Len() > 0 {
+		wElem := lobby.WhiteQueue.Front()
+		bElem := lobby.BlackQueue.Front()
+		if wElem == nil || bElem == nil {
+			continue
+		}
 
-        w := wElem.Value.(*core.Player)
-        b := bElem.Value.(*core.Player)
+		w := wElem.Value.(*core.Player)
+		b := bElem.Value.(*core.Player)
 
 		if !isPlayerConnected(w) {
 			lobby.removePlayer(w)
@@ -175,17 +173,18 @@ func (lobby *GomokuLobby) tryMatch() (*core.Player, *core.Player, bool) {
 		lobby.removePlayer(w)
 		lobby.removePlayer(b)
 
-        return w, b, true
-    }
+		return w, b, true
+	}
 
-    return nil, nil, false
+	return nil, nil, false
 }
 
 func isPlayerConnected(player *core.Player) bool {
-    err := player.Conn.WriteControl(
-        websocket.PingMessage,
-        []byte{},
-        time.Now().Add(time.Second),
-    )
-    return err == nil
+	if player == nil || player.Conn == nil {
+		return false
+	}
+	if player.Disconnected.Load() {
+		return false
+	}
+	return true
 }

@@ -1,5 +1,25 @@
 
+import { SITE_LOCKDOWN_ENABLED } from "../../config/siteAccess";
+
 export function FooterV1() {
+  if (SITE_LOCKDOWN_ENABLED) {
+    return (
+      <footer className="border-t border-gray-700 bg-gray-900">
+        <div className="mx-auto max-w-7xl px-4 py-8 text-center sm:px-6 lg:px-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-green-400">
+            Public preview only
+          </p>
+          <p className="mt-3 text-base text-gray-400">
+            The homepage is staying live while I work on a way to bring the rest of BoredGamz back online.
+          </p>
+          <p className="mt-6 text-sm text-gray-500">
+            &copy; {new Date().getFullYear()} BoredGamz
+          </p>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="bg-gray-900 border-t border-gray-700">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">

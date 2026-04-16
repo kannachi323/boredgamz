@@ -16,12 +16,18 @@ export function MainSection() {
             Discover, review, and connect over the best tabletop and board games the world has to offer. Never be bored again.
         </p>
         <div className="flex justify-center space-x-4">
-            <button className="px-8 py-3 text-lg font-bold text-gray-900 bg-green-400 rounded-xl shadow-lg hover:bg-green-300 transition-transform duration-300 transform hover:scale-105">
-            Explore Games
-            </button>
-            <button className="px-8 py-3 text-lg font-bold text-white bg-indigo-600 rounded-xl shadow-lg border border-indigo-500 hover:bg-indigo-500 transition-transform duration-300 transform hover:scale-105">
-            Join the Community
-            </button>
+            <a
+              href="#games"
+              className="px-8 py-3 text-lg font-bold text-gray-900 bg-green-400 rounded-xl shadow-lg hover:bg-green-300 transition-transform duration-300 transform hover:scale-105"
+            >
+              Explore Highlights
+            </a>
+            <a
+              href="#community"
+              className="px-8 py-3 text-lg font-bold text-white bg-indigo-600 rounded-xl shadow-lg border border-indigo-500 hover:bg-indigo-500 transition-transform duration-300 transform hover:scale-105"
+            >
+              See the Vision
+            </a>
         </div>
       </div>
     </section>
@@ -29,4 +35,3 @@ export function MainSection() {
 
 }
   
-

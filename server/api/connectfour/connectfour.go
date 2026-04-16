@@ -2,18 +2,21 @@ package connectfour
 
 import (
 	"boredgamz/core"
+	cf "boredgamz/core/connectfour"
+	"boredgamz/db"
+	cfdb "boredgamz/db/connectfour"
+	"boredgamz/utils"
 	"encoding/json"
 	"log"
 	"net/http"
 
-	cf "boredgamz/core/connectfour"
-	"boredgamz/utils"
+	"github.com/gorilla/websocket"
 )
 
 func JoinConnectFourLobby(lm *core.LobbyManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Ensure WebSocket upgrade
-		if r.Header.Get("Connection") != "Upgrade" && r.Header.Get("Upgrade") != "websocket" {
+		if !websocket.IsWebSocketUpgrade(r) {
 			http.Error(w, "Expected WebSocket upgrade", http.StatusUpgradeRequired)
 			return
 		}
@@ -61,6 +64,55 @@ func JoinConnectFourLobby(lm *core.LobbyManager) http.HandlerFunc {
 			reqBody.Player.Clock,
 			conn,
 		)
+		player.StartPlayer()
 		connectFourLobby.AddPlayer(player)
+
+		player.Conn.SetCloseHandler(func(code int, text string) error {
+			player.ClosePlayer()
+			connectFourLobby.RemovePlayer(player)
+			return nil
+		})
+	}
+}
+
+func GetConnectFourGame(db *db.Database) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		gameID := r.URL.Query().Get("gameID")
+		if gameID == "" {
+			http.Error(w, "missing gameID", http.StatusBadRequest)
+			return
+		}
+
+		game, err := cfdb.GetGameByID(db, gameID)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		if game == nil {
+			http.Error(w, "game not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(game)
+	}
+}
+
+func GetConnectFourGames(db *db.Database) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		playerID := r.URL.Query().Get("playerID")
+		if playerID == "" {
+			http.Error(w, "missing playerID", http.StatusBadRequest)
+			return
+		}
+
+		games, err := cfdb.GetGamesByPlayerID(db, playerID)
+		if err != nil {
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(games)
 	}
 }
