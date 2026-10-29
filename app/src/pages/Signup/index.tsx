@@ -1,90 +1,41 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowRight, UserRoundPlus } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../stores/useAuthStore";
 
 export default function SignUp() {
+  const signup = useAuthStore((state) => state.signup);
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function handleChange(e : React.ChangeEvent<HTMLInputElement>) {
-      const { name, value } = e.target;
-      setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    const data = new FormData(event.currentTarget);
+    try {
+      await signup(String(data.get("username")), String(data.get("email")), String(data.get("password")));
+      navigate("/games");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Account creation failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  async function handleSubmit(e : React.FormEvent<HTMLFormElement>) {
-      e.preventDefault();
-
-
-      if (!formData.email || !formData.password) {
-      alert("Please fill out both fields");
-      return;
-      }
-
-      console.log("User registered:", formData);
-
-      const res = await fetch("http://localhost:3000/signup", {
-          method: "POST",
-          headers: {
-              "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email: formData.email, password: formData.password }),
-      })
-
-      if (res.ok) {
-        navigate('/login');
-      }
-      
-      setFormData({ email: '', password: '' });
-  };
-
-  return (
-    <div className="w-full h-[90vh] p-10 flex items-center justify-center bg-[#171513] text-white">
-      <div className="w-1/3 h-5/6 bg-[#262322] p-10 rounded-md">
-         <form className="flex flex-col gap-10" onSubmit={(e) => handleSubmit(e)} >
-          <h2 className="text-3xl text-center font-bold">Sign up</h2>
-
-          <label>
-            <p className="mb-2">Email</p>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-
-              className="outline-2 outline-[#454340] rounded-sm focus:ring-0 focus:outline-2 focus:outline-white p-3 w-full"
-            />
-          </label>
-          
-
-          <label>
-            <p className="mb-2">Password</p>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              className="outline-2 outline-[#454340] rounded-sm focus:ring-0 focus:outline-2 focus:outline-white p-3 w-full mb-2"
-            />
-          </label>
-
-          <button type="submit" style={{ padding: '10px 20px' }} className="bg-[#363430] text-white rounded-sm hover:bg-[#454340] transition-colors duration-300">
-            Sign Up
-          </button>
-
-          <p className="text-blue-300 self-center">Already have an account? <a href="/login" className="underline">Log in</a></p>
-        </form>
-      </div>
-
-
-
-
-
-
+  return <section className="auth-page auth-page--signup">
+    <div className="auth-card">
+      <div className="auth-card__intro"><span><UserRoundPlus size={15} /> JOIN THE CLUB</span><h1>Claim your<br />seat.</h1><p>Create one account for your table name, secure sessions, and future match history—without purchases or paywalls.</p></div>
+      <form onSubmit={submit}>
+        <header><small>Create account</small><h2>Meet your next rival</h2></header>
+        <label><span>Display name</span><input name="username" autoComplete="nickname" required minLength={2} maxLength={24} /></label>
+        <label><span>Email</span><input name="email" type="email" autoComplete="email" required /></label>
+        <label><span>Password</span><input name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} /><small>Use at least 12 characters.</small></label>
+        {error && <p className="auth-error" role="alert">{error}</p>}
+        <button className="button button--primary" disabled={busy} type="submit">{busy ? "Creating account…" : "Create account"}<ArrowRight size={17} /></button>
+        <p className="auth-switch">Already registered? <Link to="/login">Sign in</Link></p>
+      </form>
     </div>
-   
-  );
+  </section>;
 }

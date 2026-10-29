@@ -1,0 +1,235 @@
+@keyframes pkr-art-in {
+  from {
+    opacity: 0;
+    transform: translate(10%, 12%) rotate(-12deg) perspective(900px)
+      rotateX(22deg);
+  }
+}
+
+@keyframes pkr-card-deal {
+  from {
+    opacity: 0;
+    transform: translateY(-18px) rotate(-3deg) scale(0.94);
+  }
+}
+
+@keyframes pkr-turn-glow {
+  to {
+    box-shadow:
+      inset 3px 0 var(--pkr-mint),
+      0 8px 34px rgba(125, 207, 182, 0.15);
+  }
+}
+
+@keyframes pkr-clock {
+  to {
+    opacity: 0.48;
+  }
+}
+
+@keyframes pkr-wait-card {
+  to {
+    transform: translateY(-8px) rotate(4deg);
+  }
+}
+
+@media (max-width: 1200px) {
+  .pkr-room {
+    grid-template-columns: 235px minmax(570px, 1fr);
+  }
+
+  .pkr-table-page .match-chat {
+    min-height: 430px;
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--pkr-line);
+    border-left: 0;
+  }
+
+  .pkr-table-page .match-chat__messages {
+    max-height: 330px;
+  }
+}
+
+@media (max-width: 850px) {
+  .pkr-lobby {
+    grid-template-columns: 1fr;
+  }
+
+  .pkr-lobby__intro {
+    min-height: 70vh;
+  }
+
+  .pkr-lobby__intro > img {
+    width: 78vw;
+  }
+
+  .pkr-lobby__form {
+    min-height: auto;
+    border-top: 1px solid var(--pkr-line);
+    border-left: 0;
+  }
+
+  .pkr-topbar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .pkr-topbar > div {
+    display: none;
+  }
+
+  .pkr-room {
+    grid-template-columns: 1fr;
+  }
+
+  .pkr-sidebar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem 1rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--pkr-line);
+  }
+
+  .pkr-sidebar > .pkr-overline,
+  .pkr-sidebar > h1,
+  .pkr-sidebar > p,
+  .pkr-sidebar > dl {
+    grid-column: 1 / -1;
+  }
+
+  .pkr-sidebar dl {
+    margin: 0.3rem 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .pkr-sidebar dl > div {
+    padding: 0 0.5rem;
+  }
+
+  .pkr-integrity {
+    margin-top: 0;
+  }
+
+  .pkr-felt {
+    min-height: 580px;
+  }
+}
+
+@media (max-width: 560px) {
+  .pkr-lobby__intro {
+    min-height: 610px;
+    padding: 1.3rem;
+  }
+
+  .pkr-lobby__intro h1 {
+    font-size: clamp(3rem, 15vw, 4.5rem);
+  }
+
+  .pkr-lobby__intro > img {
+    right: -26%;
+    width: 120vw;
+  }
+
+  .pkr-lobby__form {
+    padding: 2rem 1rem;
+  }
+
+  .pkr-lobby__form fieldset button > em {
+    display: none;
+  }
+
+  .pkr-topbar {
+    height: 53px;
+    padding: 0 0.65rem;
+  }
+
+  .pkr-topbar > button {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+
+  .pkr-sidebar {
+    padding: 0.8rem;
+  }
+
+  .pkr-sidebar h1 {
+    margin: 0;
+    font-size: 1.55rem;
+  }
+
+  .pkr-sidebar > p:not(.pkr-invite, .pkr-error),
+  .pkr-integrity {
+    display: none;
+  }
+
+  .pkr-sidebar dl {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .pkr-sidebar dl > div {
+    min-height: 42px;
+    display: grid;
+    justify-content: start;
+  }
+
+  .pkr-stage {
+    padding: 0.6rem;
+  }
+
+  .pkr-felt {
+    min-height: 520px;
+    padding: 0.8rem 0.45rem;
+    border-width: 7px;
+    border-radius: 26% / 12%;
+  }
+
+  .pkr-player > header {
+    min-width: 205px;
+    min-height: 50px;
+  }
+
+  .pkr-card {
+    width: clamp(42px, 14vw, 58px);
+  }
+
+  .pkr-card.is-compact,
+  .pkr-card-slot {
+    width: min(15.2vw, 53px);
+  }
+
+  .pkr-community {
+    min-height: 76px;
+  }
+
+  .pkr-bet-controls {
+    flex-wrap: wrap;
+  }
+
+  .pkr-bet-controls label {
+    order: 2;
+    width: 100%;
+  }
+
+  .pkr-draw-controls span {
+    max-width: 190px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pkr-lobby__intro > img,
+  .pkr-card,
+  .pkr-player.is-active > header,
+  .pkr-player time.is-low,
+  .pkr-waiting > div i {
+    animation: none !important;
+  }
+
+  .pkr-player,
+  .pkr-hand > button,
+  .pkr-lobby__form fieldset button {
+    transition: none !important;
+  }
+}

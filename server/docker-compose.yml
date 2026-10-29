@@ -1,0 +1,29 @@
+
+services:
+  db:
+    container_name: boredgamz-db
+    restart: always
+    image: postgres:17.5-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./db/sql/extensions.sql:/docker-entrypoint-initdb.d/1.extensions.sql
+      - ./db/sql/schema.sql:/docker-entrypoint-initdb.d/2.schema.sql
+  
+  db-test:
+    container_name: boredgamz-db-test
+    restart: always
+    image: postgres:17.5-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB_TEST}
+      POSTGRES_USER: ${POSTGRES_USER_TEST}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_TEST}
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./db/sql/extensions.sql:/docker-entrypoint-initdb.d/1.extensions.sql
+      - ./db/sql/schema.sql:/docker-entrypoint-initdb.d/2.schema.sql

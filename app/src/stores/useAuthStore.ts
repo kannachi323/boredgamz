@@ -1,103 +1,76 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { create } from "zustand";
+import { getApiRoot } from "../lib/api";
 
-interface User {
-  id: string
-  username: string
+export interface AuthUser {
+  id: string;
+  username: string;
 }
 
 interface AuthState {
-  isAuthenticated: boolean
-  user: User | null
-
-  setIsAuthenticated: (val: boolean) => void
-  setUser: (user: User | null) => void
-  authLoading: boolean
-
-  setAuthLoading(val: boolean): void
-  checkAuth: (callback: () => void | Promise<void>) => Promise<boolean>
-  login: (email: string, password: string) => Promise<boolean>
-  logout: (callback: () => void | Promise<void>) => Promise<boolean>
-  signup: (email: string, password: string) => Promise<boolean>
+  status: "checking" | "anonymous" | "authenticated";
+  user: AuthUser | null;
+  initialize: () => Promise<void>;
+  signup: (username: string, email: string, password: string) => Promise<AuthUser>;
+  login: (email: string, password: string) => Promise<AuthUser>;
+  logout: () => Promise<void>;
 }
 
-export const useAuthStore = create(
-  persist<AuthState>(
-    (set, get) => ({
-      isAuthenticated: false,
-      user: null,
-      authLoading: false,
-      setAuthLoading: (val) => set({ authLoading: val }),
-      setIsAuthenticated: (val) => set({ isAuthenticated: val }),
-      setUser: (user) => set({ user }),
-      signup: async (email, password) => {
-        const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/signup`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email: email, password: password }),
-        });
-        return res.ok
-      },
+const apiRoot = getApiRoot();
 
-      login: async (email, password) => {
-        const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/login`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({ email: email, password: password }),
-        });
-
-        return res.ok;
-      },
-      logout: async (callback: () => void | Promise<void>) => {
-        const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/logout`, {
-          method: "GET",
-          credentials: "include",
-        });
-        set({ isAuthenticated: false, user: null });
-        callback();
-        return res.ok;
-      },
-      checkAuth: async (onFail: () => void | Promise<void>) => {
-        const { setAuthLoading } = get();
-        try {
-          setAuthLoading(true);
-          const res = await fetch(`${import.meta.env.VITE_SERVER_ROOT}/check-auth`, {
-            method: 'GET',
-            credentials: 'include',
-          })
-          if (res.ok) {
-            const data = await res.json()
-            set({
-              user: { id: data.id, username: data.username },
-              isAuthenticated: true,
-            })
-            return true
-          } else {
-            set({ isAuthenticated: false })
-            onFail()
-            return false
-          }
-        } catch (err) {
-          console.warn('Auth check failed:', err)
-          set({ isAuthenticated: false })
-          onFail()
-          return false
-        } finally {
-          setAuthLoading(false)
-        }
-      },
-    }),
-    {
-      name: 'auth-storage',
-      partialize: (state) => ({
-        isAuthenticated: state.isAuthenticated,
-        user: state.user,
-      }) as unknown as AuthState,
+export const useAuthStore = create<AuthState>((set) => ({
+  status: "checking",
+  user: null,
+  initialize: async () => {
+    let response = await authFetch("/v1/auth/session");
+    if (response.status === 401) {
+      const refreshed = await authFetch("/v1/auth/refresh", { method: "POST" });
+      if (refreshed.ok) response = await authFetch("/v1/auth/session");
     }
-  )
-)
+    if (!response.ok) {
+      set({ status: "anonymous", user: null });
+      return;
+    }
+    set({ status: "authenticated", user: await readUser(response) });
+  },
+  signup: async (username, email, password) => {
+    const response = await authFetch("/v1/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password }),
+    });
+    if (!response.ok) throw new Error(await readError(response));
+    const user = await readUser(response);
+    set({ status: "authenticated", user });
+    return user;
+  },
+  login: async (email, password) => {
+    const response = await authFetch("/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!response.ok) throw new Error(await readError(response));
+    const user = await readUser(response);
+    set({ status: "authenticated", user });
+    return user;
+  },
+  logout: async () => {
+    await authFetch("/v1/auth/logout", { method: "POST" });
+    set({ status: "anonymous", user: null });
+  },
+}));
+
+function authFetch(path: string, init?: RequestInit) {
+  return fetch(`${apiRoot}${path}`, { ...init, credentials: "include" });
+}
+
+async function readUser(response: Response) {
+  return (await response.json()) as AuthUser;
+}
+
+async function readError(response: Response) {
+  const message = (await response.text()).trim();
+  if (response.status === 409) return "That email is already registered.";
+  if (response.status === 401) return "The email or password is incorrect.";
+  return message || "The account service could not complete that request.";
+}

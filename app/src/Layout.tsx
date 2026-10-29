@@ -1,20 +1,20 @@
-import { NavBarV1 } from "./components/NavBar/NavBarV1";
+import type { ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
+import { NavBarV1 } from './components/NavBar/NavBarV1'
+import { FooterV1 } from './features/Footer/FooterV1'
 
-interface LayoutProps {
-  children : React.ReactNode
-}
-
-export function AppLayout({children} : LayoutProps) {
+export function AppLayout({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  const immersive = ['/games/tictactoe', '/games/connect-four', '/games/gomoku', '/games/chess', '/games/poker', '/games/mahjong'].includes(location.pathname)
+  if (immersive) {
+    return <div className="site-shell"><a className="skip-link" href="#main-content">Skip to content</a><div id="main-content">{children}</div></div>
+  }
   return (
-    <>
-      <header className="sticky top-0 z-50 bg-gray-900/90 backdrop-blur-sm shadow-xl border-b 
-        border-gray-700 h-[8vh] max-h-[8vh] w-screen max-w-screen"
-      >
-        <NavBarV1 />
-      </header>
-      <div className="h-[92vh] max-h-[92vh] w-screen max-w-screen overflow-scroll">
-        {children}
-      </div>
-    </>
+    <div className="site-shell">
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <NavBarV1 />
+      <main id="main-content">{children}</main>
+      <FooterV1 />
+    </div>
   )
 }

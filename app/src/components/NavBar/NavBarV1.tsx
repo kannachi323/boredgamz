@@ -1,90 +1,43 @@
+import { Dices, LogIn, LogOut, Menu, UserRoundPlus, X } from 'lucide-react'
+import { useState } from 'react'
+import { Link, NavLink } from 'react-router-dom'
+import { useAuthStore } from '../../stores/useAuthStore'
 
-import { Dropdown } from "../Dropdown";
-import { CgProfile } from "react-icons/cg";
-import { useAuthStore } from "../../stores/useAuthStore";
-import { useNavigate } from "react-router-dom";
-
+const links = [
+  { to: '/', label: 'Home' },
+  { to: '/games', label: 'Game room' },
+]
 
 export function NavBarV1() {
-  const { isAuthenticated, user, logout } = useAuthStore();
-  const navigate = useNavigate();
-
+  const [open, setOpen] = useState(false)
+  const status = useAuthStore((state) => state.status)
+  const user = useAuthStore((state) => state.user)
+  const logout = useAuthStore((state) => state.logout)
   return (
-    <>
-        <div className="flex justify-between items-center h-16 px-8">
-          <a href="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-extrabold tracking-tight text-white">Bored<span className="text-green-400">Gamz</span></span>
-          </a>
-
-          <nav className="flex flex-row justify-center items-center space-x-8">
-            {['Games', 'Community', 'About'].map((item) => (
-              <a key={item} href={`/${item.toLowerCase()}`} className="text-gray-300 hover:text-green-400 transition duration-150 font-semibold">
-                {item}
-              </a>
-            ))}
-            <div className="flex flex-row justify-center items-center gap-2">
-              {isAuthenticated ? (
-                <div className="relative">
-                  <button
-                    className="
-                      flex items-center gap-2 px-3 py-1.5 
-                      bg-[#2a2f37] text-gray-200 
-                      rounded-full border border-[#3a3f47]
-                      hover:bg-[#333842] 
-                      transition
-                    "
-                  >
-                    <CgProfile className="text-2xl" />
-                    <span className="font-semibold text-sm">
-                      {user?.username || "Player"}
-                    </span>
-                  </button>
-
-                  <div className="absolute right-0 mt-2">
-                    <Dropdown
-                      label=""
-                      items={[
-                        <button
-                          className="text-left w-full px-3 py-2 hover:bg-gray-100 transition"
-                          onClick={() => logout(() => navigate("/"))}
-                        >
-                          Log out
-                        </button>,
-                      ]}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <a
-                    className="
-                      px-4 py-1.5 
-                      bg-[#313d51] text-[#d1d7e3] 
-                      font-semibold rounded-md 
-                      hover:bg-[#43536d] 
-                      transition
-                    "
-                    href="/login"
-                  >
-                    Log In
-                  </a>
-                  <a
-                    className="
-                      px-4 py-1.5 
-                      bg-[#05df71] text-[#002123] 
-                      font-semibold rounded-md 
-                      hover:bg-[#1bfe8c] 
-                      transition
-                    "
-                    href="/signup"
-                  >
-                    Sign Up
-                  </a>
-                </div>
-              )}
-            </div>
-          </nav>
-        </div>
-    </>
-  );
+    <header className="topbar">
+      <div className="topbar__inner">
+        <Link className="brand" to="/" aria-label="BoredGamz home" onClick={() => setOpen(false)}>
+          <span className="brand__mark"><Dices size={20} strokeWidth={2.4} /></span>
+          <span>Bored<span>Gamz</span></span>
+        </Link>
+        <nav className={`nav ${open ? 'nav--open' : ''}`} aria-label="Primary navigation">
+          {links.map((link) => (
+            <NavLink key={link.to} to={link.to} end={link.to === '/'} onClick={() => setOpen(false)}>
+              {link.label}
+            </NavLink>
+          ))}
+          {status === 'authenticated' && user ? <>
+            <span className="nav__player">Playing as <b>{user.username}</b></span>
+            <button className="nav__auth" type="button" onClick={() => { setOpen(false); void logout() }}><LogOut size={15} /> Sign out</button>
+          </> : <>
+            <Link className="nav__auth" to="/login" onClick={() => setOpen(false)}><LogIn size={15} /> Sign in</Link>
+            <Link className="button button--small button--primary" to="/signup" onClick={() => setOpen(false)}><UserRoundPlus size={15} /> Join</Link>
+          </>}
+        </nav>
+        <button className="nav-toggle" type="button" aria-expanded={open} aria-label="Toggle menu" onClick={() => setOpen((value) => !value)}>
+          {open ? <X /> : <Menu />}
+        </button>
+      </div>
+    </header>
+  )
 }

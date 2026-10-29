@@ -1,49 +1,23 @@
+import { ArrowUpRight, Clock3, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import type { GameDefinition } from '../../data/games'
 
-interface GameCardProps {
-  title: string;
-  description: string;
-  bgImg?: string;
-  bgSize?: string;
-  playLink: string;
-}
-
-export function GameCard({ title, description, bgImg, bgSize, playLink }: GameCardProps) {
+export function GameCard({ game, index = 0 }: { game: GameDefinition; index?: number }) {
+  const Icon = game.icon
   return (
-    <div className="group relative flex flex-col items-center space-y-6 bg-gray-900 rounded-2xl">
-      <div className="w-48 aspect-square overflow-hidden">
-        <div
-          className="w-full h-full"
-          style={{
-            backgroundImage: bgImg,
-            backgroundSize: bgSize,
-            backgroundPosition: "center",
-            backgroundRepeat: 'no-repeat'
-          }}
-        ></div>
-        <a
-          href={playLink}
-          className="
-            absolute inset-0 
-            flex items-center justify-center 
-            opacity-0 group-hover:opacity-100
-            transition-opacity duration-300 rounded-2xl
-            bg-black/25
-          "
-        >
-          <svg
-            className="w-16 h-16 text-white"
-            fill="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        </a>
+    <Link className="game-card" to={`/games/${game.slug}`} style={{ '--accent': game.accent, '--delay': `${index * 55}ms` } as React.CSSProperties}>
+      <div className="game-card__top">
+        <span className="game-card__icon"><Icon size={27} /></span>
+        <ArrowUpRight className="game-card__arrow" size={22} />
       </div>
-
-      <div className="w-full p-6 rounded-3xl flex flex-col items-start">
-        <h3 className="text-2xl font-extrabold text-white mb-2">{title}</h3>
-        <p className="text-gray-300 text-md mb-4">{description}</p>
+      <p className="eyebrow">{game.kicker}</p>
+      <h3>{game.name}</h3>
+      <p className="game-card__description">{game.description}</p>
+      <div className="game-card__meta">
+        <span><Users size={15} /> {game.players}</span>
+        <span><Clock3 size={15} /> {game.duration}</span>
       </div>
-    </div>
-  );
+      <div className="game-card__modes">{game.modes.map((mode) => <span key={mode}>{mode}</span>)}</div>
+    </Link>
+  )
 }

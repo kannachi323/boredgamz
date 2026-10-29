@@ -1,5 +1,3 @@
-
-
 export function CommunitySection() {
   return (
     <section id="community" className="py-20 bg-gray-900">

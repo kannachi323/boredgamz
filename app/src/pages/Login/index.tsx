@@ -1,80 +1,40 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/useAuthStore';
+import { ArrowRight, LockKeyhole } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../stores/useAuthStore";
 
 export default function Login() {
-  const {setIsAuthenticated, setUser, login} = useAuthStore();
+  const login = useAuthStore((state) => state.login);
   const navigate = useNavigate();
-  
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function handleChange(e : React.ChangeEvent<HTMLInputElement>) {
-      const { name, value } = e.target;
-      setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    const data = new FormData(event.currentTarget);
+    try {
+      await login(String(data.get("email")), String(data.get("password")));
+      navigate("/games");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Sign in failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
-  async function handleSubmit(e : React.FormEvent<HTMLFormElement>) {
-      e.preventDefault();
-
-
-      if (!formData.email || !formData.password) {
-      alert("Please fill out both fields");
-      return;
-      }
-
-      if (await login(formData.email, formData.password)) {
-        setIsAuthenticated(true)
-        setUser({id: formData.email, username: formData.email.split('@')[0]})
-        navigate('/games');
-      }
-
-      
-  };
-
-  return (
-    <div className="w-full h-[90vh] p-10 flex items-center justify-center bg-[#171513] text-white">
-      <div className="w-1/3 h-5/6 bg-[#262322] p-10 rounded-md">
-         <form className="flex flex-col gap-10" onSubmit={(e) => handleSubmit(e)} >
-          <h2 className="text-3xl text-center font-bold">Log in</h2>
-
-          <label>
-            <p className="mb-2">Email</p>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-
-              className="outline-2 outline-[#454340] rounded-sm focus:ring-0 focus:outline-2 focus:outline-white p-3 w-full"
-            />
-          </label>
-          
-
-          <label>
-            <p className="mb-2">Password</p>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              className="outline-2 outline-[#454340] rounded-sm focus:ring-0 focus:outline-2 focus:outline-white p-3 w-full mb-2"
-            />
-            <a href="/forgot-password" className="text-blue-300 underline">Forgot Password?</a>
-          </label>
-
-          <button type="submit" style={{ padding: '10px 20px' }} className="bg-[#363430] text-white rounded-sm hover:bg-[#454340] transition-colors duration-300">
-            Log In
-          </button>
-
-          <p className="text-blue-300 self-center">Don't have an account? <a href="/signup" className="underline">Sign up</a></p>
-        </form>
-      </div>
+  return <section className="auth-page">
+    <div className="auth-card">
+      <div className="auth-card__intro"><span><LockKeyhole size={15} /> PLAYER ACCOUNT</span><h1>Welcome back<br />to the table.</h1><p>Your account name follows you into every live room while the games remain server-authoritative.</p></div>
+      <form onSubmit={submit}>
+        <header><small>Sign in</small><h2>Continue playing</h2></header>
+        <label><span>Email</span><input name="email" type="email" autoComplete="email" required /></label>
+        <label><span>Password</span><input name="password" type="password" autoComplete="current-password" required minLength={12} maxLength={128} /></label>
+        {error && <p className="auth-error" role="alert">{error}</p>}
+        <button className="button button--primary" disabled={busy} type="submit">{busy ? "Signing in…" : "Sign in"}<ArrowRight size={17} /></button>
+        <p className="auth-switch">New to BoredGamz? <Link to="/signup">Create an account</Link></p>
+      </form>
     </div>
-   
-  );
+  </section>;
 }

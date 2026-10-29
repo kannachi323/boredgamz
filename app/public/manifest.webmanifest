@@ -1,0 +1,10 @@
+{
+  "name": "BoredGamz",
+  "short_name": "BoredGamz",
+  "description": "Six familiar games, one welcoming table.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0b0f",
+  "theme_color": "#0a0b0f",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
