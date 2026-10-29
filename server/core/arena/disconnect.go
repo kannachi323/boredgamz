@@ -26,6 +26,7 @@ func (h *Hub) Disconnect(player *Player, room *Room, generation uint64) {
 	}
 	room.broadcastStateLocked()
 	room.mu.Unlock()
+	h.scheduleAbandonCheck(room)
 
 	time.AfterFunc(disconnectGrace, func() {
 		room.mu.Lock()

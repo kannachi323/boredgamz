@@ -1,7 +1,7 @@
 import { Chess, type Square } from "chess.js";
 import { Handshake } from "lucide-react";
 import { useMemo, useState } from "react";
-import { BankClock } from "../../components/table/Clocks";
+import { BankClock, DeadlineClock } from "../../components/table/Clocks";
 import { PlayerTag } from "../../components/table/PlayerTag";
 import { ResultBar } from "../../components/table/ResultBar";
 import { TableShell } from "../../components/table/TableShell";
@@ -38,6 +38,8 @@ export function ChessTable(props: Props) {
   const order: ("one" | "two")[] = flipped ? ["one", "two"] : ["two", "one"];
   const playing = state.status === "playing";
   const moves = state.chess?.moves ?? [];
+  // Each side's first move has a short window; the bank starts after it.
+  const opening = playing && moves.length < 2 && Boolean(state.clocks);
   const mode = game.modes.find((item) => item.id === state.settings.mode);
   const outcome = describe(state, me);
   const rematchSent = me ? state.rematchReady.includes(me.mark) : false;
@@ -61,7 +63,7 @@ export function ChessTable(props: Props) {
               left={player?.left}
               piece={<span className={`chess-piece is-${mark === "one" ? "w" : "b"}`}>{glyph.k}{"︎"}</span>}
               status={mark === "one" ? "White" : "Black"}
-              clock={<BankClock milliseconds={state.clocks?.[mark]} running={active && moves.length > 0} />}
+              clock={opening && active ? <DeadlineClock deadline={state.turnDeadline} urgentAt={10} /> : <BankClock milliseconds={state.clocks?.[mark]} running={active && !opening} />}
             />
           );
         })}

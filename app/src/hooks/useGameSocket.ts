@@ -127,6 +127,7 @@ export function useGameSocket<S>(service: SocketService, path = "", isOver: (sta
         opened = true;
         attempts.current = 0;
         setReconnecting(false);
+        setError("");
       };
       socket.onmessage = (event) => {
         if (socketRef.current !== socket) return;
@@ -166,10 +167,15 @@ export function useGameSocket<S>(service: SocketService, path = "", isOver: (sta
         const retry = () => {
           if (requestRef.current === pending) connectRef.current(pending);
         };
-        if (!opened && attempts.current <= 2) {
+        if (!opened && attempts.current <= 3) {
           // A refused handshake is usually an expired access cookie.
-          void refreshSession().then((ok) => {
-            if (!ok) {
+          void refreshSession().then((result) => {
+            if (result === "offline") {
+              setError("Can't reach the server. Retrying…");
+              retryTimer.current = window.setTimeout(retry, Math.min(maxBackoff, 1500 * attempts.current));
+              return;
+            }
+            if (result === "signed-out") {
               requestRef.current = null;
               writeSeat(seatKey, null);
               setReconnecting(false);
@@ -182,6 +188,7 @@ export function useGameSocket<S>(service: SocketService, path = "", isOver: (sta
           });
           return;
         }
+        if (!opened) setError("Can't reach the server. Retrying…");
         const delay = Math.min(maxBackoff, 800 * 2 ** Math.min(attempts.current, 4));
         retryTimer.current = window.setTimeout(retry, delay);
       };

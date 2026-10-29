@@ -33,7 +33,7 @@ export interface GameDefinition {
   name: string;
   minutes: string;
   service: GameService;
-  /** First character of private codes, so a code alone finds its game. */
+  /** First digit of private codes, so a code alone finds its game. */
   codePrefix: string;
   modes: GameMode[];
   series?: Choice<number>[];
@@ -51,7 +51,7 @@ export const games: GameDefinition[] = [
     name: "Tic-Tac-Toe",
     minutes: "2 min",
     service: "arena",
-    codePrefix: "T",
+    codePrefix: "1",
     modes: [
       { id: "classic", name: "Classic", detail: "3 × 3", glyph: { kind: "grid", rows: 3, columns: 3 } },
       { id: "four-square", name: "Four Square", detail: "4 × 4, three in a row", glyph: { kind: "grid", rows: 4, columns: 4 } },
@@ -71,7 +71,7 @@ export const games: GameDefinition[] = [
     name: "Connect Four",
     minutes: "5 min",
     service: "arena",
-    codePrefix: "C",
+    codePrefix: "2",
     modes: [
       { id: "classic", name: "Classic", detail: "6 × 7, four to win", glyph: { kind: "grid", rows: 6, columns: 7 } },
       { id: "quick", name: "Quick", detail: "5 × 6, four to win", glyph: { kind: "grid", rows: 5, columns: 6 } },
@@ -91,7 +91,7 @@ export const games: GameDefinition[] = [
     name: "Gomoku",
     minutes: "10 min",
     service: "arena",
-    codePrefix: "G",
+    codePrefix: "3",
     modes: [
       { id: "freestyle", name: "Freestyle", detail: "15 × 15, five or more", glyph: { kind: "grid", rows: 7, columns: 7 } },
       { id: "pro", name: "Exact Five", detail: "Overlines don't count", glyph: { kind: "grid", rows: 7, columns: 7, strike: true } },
@@ -115,7 +115,7 @@ export const games: GameDefinition[] = [
     name: "Chess",
     minutes: "3–25 min",
     service: "arena",
-    codePrefix: "H",
+    codePrefix: "4",
     modes: [
       { id: "blitz", name: "Blitz", detail: "3 min + 2s", glyph: { kind: "clock", minutes: 3 }, timeControl: "3m+2s" },
       { id: "rapid", name: "Rapid", detail: "10 min", glyph: { kind: "clock", minutes: 10 }, timeControl: "10m" },
@@ -133,7 +133,7 @@ export const games: GameDefinition[] = [
     name: "Poker",
     minutes: "10 min",
     service: "poker",
-    codePrefix: "P",
+    codePrefix: "5",
     modes: [
       { id: "holdem", name: "Hold'em", detail: "Heads-up, no limit", glyph: { kind: "cards", count: 2 } },
       { id: "five-card-draw", name: "Five-Card Draw", detail: "One draw, two bets", glyph: { kind: "cards", count: 5 } },
@@ -144,7 +144,7 @@ export const games: GameDefinition[] = [
     name: "Mahjong",
     minutes: "8–12 min",
     service: "mahjong",
-    codePrefix: "M",
+    codePrefix: "6",
     modes: [
       { id: "garden", name: "Shared Garden", detail: "Clear 144 tiles together", glyph: { kind: "tiles", layers: 3 } },
       { id: "duel", name: "Mirror Duel", detail: "Race the same 72 tiles", glyph: { kind: "tiles", layers: 2 } },
@@ -157,16 +157,15 @@ export function getGame(slug: string | undefined) {
   return games.find((game) => game.slug === slug);
 }
 
-const codeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-
-export function makeInviteCode(game: GameDefinition, random: () => number = Math.random) {
-  let code = game.codePrefix;
-  for (let i = 0; i < 5; i++) code += codeAlphabet[Math.floor(random() * codeAlphabet.length)];
-  return code;
+/** Six digits: the game's digit, then five random ones (easy to read aloud and type on a phone). */
+export function makeInviteCode(game: GameDefinition) {
+  const bytes = new Uint32Array(5);
+  crypto.getRandomValues(bytes);
+  return game.codePrefix + Array.from(bytes, (value) => value % 10).join("");
 }
 
 export function normalizeCode(value: string) {
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  return value.replace(/\D/g, "").slice(0, 6);
 }
 
 /** Finds which game a private code belongs to from its prefix. */

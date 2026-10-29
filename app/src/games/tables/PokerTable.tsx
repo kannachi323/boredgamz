@@ -134,7 +134,7 @@ export function PokerTable({ game, state, error, reconnecting, onAction, onDisca
       )}
       {!handOver && seated && !myTurn && <p className="turn-line">{state.seats[top].name} to act…</p>}
       {handOver && (
-        <ResultBar title={result.title} detail={result.detail} tone={result.tone}>
+        <ResultBar title={result.title} detail={state.seats.some((seat) => seat.stack === 0) ? `${result.detail ? `${result.detail} · ` : ""}Stacks reset next hand` : result.detail} tone={result.tone}>
           {seated && !state.seats[top].left && <RematchButton sent={ready} label="Next hand" onClick={onNext} />}
           <button className={`btn ${state.seats[top].left ? "btn--primary" : ""}`} type="button" onClick={onLeave}>{seated && state.seats[top].left ? "Back to lobby" : "Leave"}</button>
         </ResultBar>

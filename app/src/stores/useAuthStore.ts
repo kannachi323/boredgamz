@@ -6,11 +6,14 @@ export interface AuthUser {
   username: string;
 }
 
+export type RefreshResult = "ok" | "signed-out" | "offline";
+
 interface AuthState {
   status: "checking" | "anonymous" | "authenticated";
   user: AuthUser | null;
   initialize: () => Promise<void>;
-  refresh: () => Promise<boolean>;
+  /** "ok", "signed-out" (401) or "offline" (server unreachable). */
+  refresh: () => Promise<RefreshResult>;
   signup: (username: string, email: string, password: string) => Promise<AuthUser>;
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
@@ -21,7 +24,7 @@ const apiRoot = getApiRoot();
 const refreshEveryMs = 20 * 60 * 1000;
 let refreshTimer: number | undefined;
 
-function keepFresh(refresh: () => Promise<boolean>) {
+function keepFresh(refresh: () => Promise<RefreshResult>) {
   window.clearInterval(refreshTimer);
   refreshTimer = window.setInterval(() => void refresh(), refreshEveryMs);
 }
@@ -30,27 +33,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   status: "checking",
   user: null,
   initialize: async () => {
-    try {
-      let response = await authFetch("/v1/auth/session");
-      if (response.status === 401 && (await get().refresh())) response = await authFetch("/v1/auth/session");
-      if (!response.ok) {
-        set({ status: "anonymous", user: null });
-        return;
-      }
-      set({ status: "authenticated", user: await readUser(response) });
-      keepFresh(get().refresh);
-    } catch {
-      // Network or server down: let people browse; actions will ask to sign in.
-      set({ status: "anonymous", user: null });
-    }
+    // /session answers 200 (signed in, access cookie rotated if needed) or
+    // 204 (signed out), so a normal page load logs no failed requests.
+    const result = await get().refresh();
+    if (result !== "ok") set({ status: "anonymous", user: null });
   },
   refresh: async () => {
     try {
-      const response = await authFetch("/v1/auth/refresh", { method: "POST" });
-      if (!response.ok && response.status === 401) set({ status: "anonymous", user: null });
-      return response.ok;
+      const response = await authFetch("/v1/auth/session");
+      if (response.status === 200) {
+        set({ status: "authenticated", user: await readUser(response) });
+        keepFresh(get().refresh);
+        return "ok";
+      }
+      if (response.status === 204) {
+        window.clearInterval(refreshTimer);
+        set({ status: "anonymous", user: null });
+        return "signed-out";
+      }
+      return "offline";
     } catch {
-      return false;
+      return "offline";
     }
   },
   signup: async (username, email, password) => {

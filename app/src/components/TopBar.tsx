@@ -1,6 +1,7 @@
 import { LogOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { safeNext } from "../lib/safeNext";
 import { useAuthStore } from "../stores/useAuthStore";
 import { ThemeToggle } from "./ThemeToggle";
 import { Wordmark } from "./Wordmark";
@@ -9,7 +10,9 @@ export function TopBar() {
   const status = useAuthStore((state) => state.status);
   const user = useAuthStore((state) => state.user);
   const location = useLocation();
-  const next = encodeURIComponent(location.pathname + location.search);
+  // On the auth pages, keep the original destination instead of nesting it.
+  const onAuthPage = location.pathname === "/login" || location.pathname === "/signup";
+  const next = encodeURIComponent(onAuthPage ? safeNext(new URLSearchParams(location.search).get("next")) : location.pathname + location.search);
   return (
     <header className="topbar">
       <div className="topbar__inner">
@@ -20,8 +23,8 @@ export function TopBar() {
           <AccountMenu name={user.username} />
         ) : status === "anonymous" ? (
           <>
-            <Link className="btn btn--ghost hide-sm" to={`/login?next=${next}`}>Sign in</Link>
-            <Link className="btn btn--ink" to={`/signup?next=${next}`}>Create account</Link>
+            <Link className="btn btn--ghost" to={`/login?next=${next}`}>Sign in</Link>
+            <Link className="btn btn--ink" to={`/signup?next=${next}`}>Sign up</Link>
           </>
         ) : null}
       </div>
@@ -49,7 +52,7 @@ function AccountMenu({ name }: { name: string }) {
   return (
     <div className="menu" ref={ref}>
       <button className="btn btn--ghost" type="button" aria-label={`Account: ${name}`} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen((value) => !value)}>
-        <span className="avatar" aria-hidden="true">{name.slice(0, 1)}</span>
+        <span className="avatar" aria-hidden="true">{initial(name)}</span>
         <span className="hide-sm">{name}</span>
       </button>
       {open && (
@@ -62,4 +65,8 @@ function AccountMenu({ name }: { name: string }) {
       )}
     </div>
   );
+}
+
+function initial(name: string) {
+  return name.trim().slice(0, 1).toLocaleUpperCase();
 }

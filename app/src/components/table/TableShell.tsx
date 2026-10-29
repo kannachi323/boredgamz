@@ -60,7 +60,7 @@ export function TableShell(props: Props) {
         </div>
         <span className="topbar__spacer" />
         {props.inviteCode && <span className="chip hide-sm" title="Private table code">{props.inviteCode}</span>}
-        <span className="chip" title="Spectators"><Eye size={14} /> {props.spectators}</span>
+        <span className={`chip ${props.spectators ? "" : "hide-sm"}`} title="Spectators"><Eye size={14} /> {props.spectators}</span>
         <button className="btn btn--ghost btn--icon" type="button" onClick={() => void copyWatchLink()} aria-label="Copy spectator link" title="Copy spectator link">
           {copied ? <Check size={17} /> : <Link2 size={17} />}
         </button>

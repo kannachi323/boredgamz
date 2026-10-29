@@ -2,6 +2,7 @@ package arena
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -128,4 +129,54 @@ func TestMisereCompletingALineLoses(t *testing.T) {
 	snapshot := room.Snapshot()
 	require.Equal(t, "finished", snapshot.Status)
 	require.Equal(t, "two", snapshot.Winner)
+}
+
+func TestChessBankStartsAfterEachSidesFirstMove(t *testing.T) {
+	game, _ := NewGameWithMode(Chess, "blitz")
+	white, black := newPlayer("w", "W"), newPlayer("b", "B")
+	white.Mark, black.Mark = "one", "two"
+	room := newRoom("opening", game, white, black, RoomSettings{Mode: "blitz", BestOf: 1, TimeControl: "3m+2s"}, nil)
+	room.mu.Lock()
+	room.initializeChessClocksLocked()
+	room.resetTurnTimerLocked()
+	require.True(t, room.turnStarted.IsZero(), "white's bank must not run before the first move")
+	require.NotNil(t, room.turnDeadline)
+	room.mu.Unlock()
+
+	require.NoError(t, room.HandleChessMove("w", "e2", "e4", ""))
+	room.mu.Lock()
+	require.True(t, room.turnStarted.IsZero(), "black's bank must not run before its first move")
+	require.Equal(t, 3*time.Minute, room.clockRemaining["one"], "no increment or deduction for the opening move")
+	room.mu.Unlock()
+
+	require.NoError(t, room.HandleChessMove("b", "e7", "e5", ""))
+	room.mu.Lock()
+	require.False(t, room.turnStarted.IsZero(), "from move two the bank runs")
+	room.mu.Unlock()
+}
+
+func TestChessModeDecidesTheClock(t *testing.T) {
+	for mode, clock := range map[string]string{"blitz": "3m+2s", "rapid": "10m", "standard": "15m+10s", "": "15m+10s"} {
+		options, err := normalizeJoinOptions(JoinOptions{Kind: Chess, PlayerID: "p", Mode: mode, TimeControl: "untimed"})
+		require.NoError(t, err)
+		require.Equal(t, clock, options.TimeControl, mode)
+	}
+}
+
+func TestChessResignChargesTheRunningClock(t *testing.T) {
+	game, _ := NewGameWithMode(Chess, "rapid")
+	white, black := newPlayer("w", "W"), newPlayer("b", "B")
+	white.Mark, black.Mark = "one", "two"
+	room := newRoom("charge", game, white, black, RoomSettings{Mode: "rapid", BestOf: 1, TimeControl: "10m"}, nil)
+	room.mu.Lock()
+	room.initializeChessClocksLocked()
+	room.resetTurnTimerLocked()
+	room.mu.Unlock()
+	require.NoError(t, room.HandleChessMove("w", "d2", "d4", ""))
+	require.NoError(t, room.HandleChessMove("b", "d7", "d5", ""))
+	room.mu.Lock()
+	room.turnStarted = room.turnStarted.Add(-5 * time.Second) // white thinks for 5s
+	room.mu.Unlock()
+	require.NoError(t, room.Resign("b"))
+	require.Less(t, room.Snapshot().Clocks["one"], int64(10*60*1000-4000))
 }

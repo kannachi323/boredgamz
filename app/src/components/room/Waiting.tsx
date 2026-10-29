@@ -1,5 +1,5 @@
 import { Check, Link2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BoardArt } from "../../games/BoardArt";
 import type { GameDefinition } from "../../games/catalog";
 import type { JoinRequest } from "../../hooks/useGameSocket";
@@ -16,6 +16,7 @@ export function Waiting({ game, request, connecting, error, onCancel }: Props) {
   const [copied, setCopied] = useState(false);
   const code = request?.inviteCode;
   const watching = request?.role === "spectator";
+  const widened = useWidenedSearch(!connecting && !code && !watching && Boolean(game.series || game.clocks));
   const title = watching ? "Opening the table…" : connecting ? "Pulling up a chair…" : code ? "Waiting for your friend" : "Finding an opponent";
 
   async function copyInvite() {
@@ -36,6 +37,7 @@ export function Waiting({ game, request, connecting, error, onCancel }: Props) {
         <div className="waiting__art"><BoardArt slug={game.slug} /></div>
         <span className="pulse-dots" aria-hidden="true"><i /><i /><i /></span>
         <h1>{title}</h1>
+        {widened && <p className="waiting__note">Also matching any series length or clock in this mode</p>}
         {code && !watching && (
           <div className="code-card">
             <span className="label">Table code</span>
@@ -50,4 +52,16 @@ export function Waiting({ game, request, connecting, error, onCancel }: Props) {
       </div>
     </section>
   );
+}
+
+/** Mirrors the server: public queues widen to the whole mode after 20 seconds. */
+function useWidenedSearch(active: boolean) {
+  const [widened, setWidened] = useState(false);
+  useEffect(() => {
+    setWidened(false);
+    if (!active) return;
+    const timer = window.setTimeout(() => setWidened(true), 20_000);
+    return () => window.clearTimeout(timer);
+  }, [active]);
+  return widened;
 }

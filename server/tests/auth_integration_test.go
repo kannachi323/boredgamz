@@ -66,6 +66,30 @@ func TestAccountsAndAuthenticatedSockets(t *testing.T) {
 	session.Body.Close()
 	require.Equal(t, "Ada", me.Username)
 
+	// With only the refresh cookie, /session restores the access cookie.
+	base0, _ := url.Parse(httpServer.URL)
+	refreshOnly, _ := cookiejar.New(nil)
+	for _, cookie := range jar.Cookies(base0) {
+		if cookie.Name == "refresh_token" {
+			refreshOnly.SetCookies(base0, []*http.Cookie{cookie})
+		}
+	}
+	restored, err := (&http.Client{Jar: refreshOnly}).Get(httpServer.URL + "/api/v1/auth/session")
+	require.NoError(t, err)
+	restored.Body.Close()
+	require.Equal(t, http.StatusOK, restored.StatusCode)
+	hasAccess := false
+	for _, cookie := range refreshOnly.Cookies(base0) {
+		hasAccess = hasAccess || cookie.Name == "access_token"
+	}
+	require.True(t, hasAccess)
+
+	// A visitor with no cookies gets 204, not an error status.
+	anonymous, err := http.Get(httpServer.URL + "/api/v1/auth/session")
+	require.NoError(t, err)
+	anonymous.Body.Close()
+	require.Equal(t, http.StatusNoContent, anonymous.StatusCode)
+
 	wsURL := "ws" + strings.TrimPrefix(httpServer.URL, "http") + "/api/v1/arena/tictactoe?playerId=browser:tab1&name=Impostor"
 	header := http.Header{"Origin": []string{"http://allowed.example"}}
 
@@ -96,5 +120,5 @@ func TestAccountsAndAuthenticatedSockets(t *testing.T) {
 	session, err = client.Get(httpServer.URL + "/api/v1/auth/session")
 	require.NoError(t, err)
 	session.Body.Close()
-	require.Equal(t, http.StatusUnauthorized, session.StatusCode)
+	require.Equal(t, http.StatusNoContent, session.StatusCode)
 }

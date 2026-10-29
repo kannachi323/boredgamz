@@ -2,9 +2,16 @@ package arena
 
 import "time"
 
+// roomRetention is how long a finished or abandoned room stays in memory
+// (a var so tests can shorten it).
+var roomRetention = 5 * time.Minute
+
+// queueFallbackAfter is how long a public player waits for an exact match
+// before accepting anyone in the same game and mode (a var for tests).
+var queueFallbackAfter = 20 * time.Second
+
 const (
 	disconnectGrace = 20 * time.Second
-	roomRetention   = 5 * time.Minute
 	maxChatHistory  = 60
 	maxChatLength   = 240
 )

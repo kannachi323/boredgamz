@@ -2,7 +2,6 @@ package server
 
 import (
 	"boredgamz/api"
-	"boredgamz/middleware"
 	"time"
 )
 
@@ -14,6 +13,6 @@ func (s *Server) MountAuthHandlers() {
 	s.APIRouter.With(credentials.Middleware).Post("/v1/auth/signup", api.SignUp(s.DB))
 	s.APIRouter.With(credentials.Middleware).Post("/v1/auth/login", api.LogIn(s.DB))
 	s.APIRouter.Post("/v1/auth/logout", api.LogOut())
-	s.APIRouter.With(middleware.AuthMiddleware).Get("/v1/auth/session", api.CheckAuth(s.DB))
+	s.APIRouter.With(refresh.Middleware).Get("/v1/auth/session", api.Session(s.DB))
 	s.APIRouter.With(refresh.Middleware).Post("/v1/auth/refresh", api.RefreshAuth(s.DB))
 }

@@ -2,6 +2,7 @@ package arena
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -222,13 +223,16 @@ func TestChessRoomEnforcesColorAndLegalMoves(t *testing.T) {
 
 func TestChessClockBanksApplyIncrement(t *testing.T) {
 	hub := NewHub()
-	white, _, err := hub.JoinMatch(JoinOptions{Kind: Chess, PlayerID: "white", TimeControl: "3m+2s"})
+	white, _, err := hub.JoinMatch(JoinOptions{Kind: Chess, PlayerID: "white", Mode: "blitz"})
 	require.NoError(t, err)
-	_, room, err := hub.JoinMatch(JoinOptions{Kind: Chess, PlayerID: "black", TimeControl: "3m+2s"})
+	_, room, err := hub.JoinMatch(JoinOptions{Kind: Chess, PlayerID: "black", Mode: "blitz"})
 	require.NoError(t, err)
 	before := room.Snapshot().Clocks["one"]
 	require.LessOrEqual(t, before, int64(180000))
+	// Opening moves use a separate window; the bank and increment start after.
 	require.NoError(t, room.HandleChessMove(white.ID, "e2", "e4", ""))
+	require.NoError(t, room.HandleChessMove("black", "e7", "e5", ""))
+	require.NoError(t, room.HandleChessMove(white.ID, "g1", "f3", ""))
 	after := room.Snapshot().Clocks
 	require.Greater(t, after["one"], int64(181000))
 	require.LessOrEqual(t, after["two"], int64(180000))
@@ -257,4 +261,36 @@ func TestNewTableRequestReleasesFinishedRoomButNotLiveGame(t *testing.T) {
 	require.Nil(t, fresh)
 	require.False(t, room.Snapshot().Players[0].Connected)
 	require.True(t, room.Snapshot().Players[0].Left)
+}
+
+func TestAbandonedSeriesIsRemoved(t *testing.T) {
+	previous := roomRetention
+	roomRetention = 50 * time.Millisecond
+	defer func() { roomRetention = previous }()
+
+	hub := NewHub()
+	one, _, err := hub.JoinMatch(JoinOptions{Kind: TicTacToe, PlayerID: "a1", BestOf: 3})
+	require.NoError(t, err)
+	two, room, err := hub.JoinMatch(JoinOptions{Kind: TicTacToe, PlayerID: "a2", BestOf: 3})
+	require.NoError(t, err)
+	require.NoError(t, room.Resign(one.ID)) // round over, series still open
+
+	hub.Disconnect(one, room, one.generation.Load())
+	hub.Disconnect(two, room, two.generation.Load())
+	require.Eventually(t, func() bool { return hub.Stats().Rooms == 0 && hub.Stats().Connections == 0 }, time.Second, 10*time.Millisecond)
+}
+
+func TestRoomWithAConnectedPlayerIsKept(t *testing.T) {
+	previous := roomRetention
+	roomRetention = 50 * time.Millisecond
+	defer func() { roomRetention = previous }()
+
+	hub := NewHub()
+	one, _, err := hub.JoinMatch(JoinOptions{Kind: TicTacToe, PlayerID: "k1", BestOf: 3})
+	require.NoError(t, err)
+	_, room, err := hub.JoinMatch(JoinOptions{Kind: TicTacToe, PlayerID: "k2", BestOf: 3})
+	require.NoError(t, err)
+	hub.Disconnect(one, room, one.generation.Load())
+	time.Sleep(150 * time.Millisecond)
+	require.Equal(t, 1, hub.Stats().Rooms)
 }

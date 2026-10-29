@@ -28,7 +28,7 @@ func ServePlayer(hub *Hub, options JoinOptions, conn *websocket.Conn) error {
 		}
 		if room == nil {
 			player.connected.Store(false)
-			hub.LeaveWaiting(options, player)
+			hub.LeaveWaiting(player)
 		} else {
 			hub.Disconnect(player, room, generation)
 		}

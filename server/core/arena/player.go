@@ -3,6 +3,7 @@ package arena
 import (
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type Player struct {
@@ -10,7 +11,8 @@ type Player struct {
 	Name string
 	Mark string
 
-	options JoinOptions // requested settings; the host's win on private tables
+	options      JoinOptions // requested settings; the host's win on private tables
+	waitingSince time.Time   // when this player joined a public queue
 
 	mu         sync.RWMutex
 	send       chan ServerMessage

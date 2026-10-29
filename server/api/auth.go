@@ -2,7 +2,6 @@ package api
 
 import (
 	"boredgamz/db"
-	"boredgamz/middleware"
 	"boredgamz/utils"
 	"encoding/json"
 	"errors"
@@ -60,17 +59,35 @@ func RefreshAuth(database *db.Database) http.HandlerFunc {
 	}
 }
 
-func CheckAuth(database *db.Database) http.HandlerFunc {
+// Session reports who is signed in. It never answers 401: a missing or
+// expired access cookie falls back to the refresh cookie (rotating the access
+// cookie), and a signed-out visitor gets 204 so page loads stay error-free.
+func Session(database *db.Database) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		noStore(w)
-		userID, ok := r.Context().Value(middleware.ContextKey("userID")).(string)
-		if !ok || userID == "" {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+		userID := ""
+		if cookie, err := r.Cookie("access_token"); err == nil && cookie.Value != "" {
+			userID, _ = utils.VerifyJWT(cookie.Value)
+		}
+		if userID == "" {
+			if cookie, err := r.Cookie("refresh_token"); err == nil && cookie.Value != "" {
+				if id, err := utils.VerifyRefreshJWT(cookie.Value); err == nil {
+					if accessToken, err := utils.GenerateAccessJWT(id); err == nil {
+						setAuthCookie(w, "access_token", accessToken, 3600)
+						userID = id
+					}
+				}
+			}
+		}
+		if userID == "" {
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		user, err := database.GetUserByID(userID)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			setAuthCookie(w, "access_token", "", -1)
+			setAuthCookie(w, "refresh_token", "", -1)
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		WriteJSON(w, http.StatusOK, &AuthResponse{Username: user.Name, UserID: user.ID})

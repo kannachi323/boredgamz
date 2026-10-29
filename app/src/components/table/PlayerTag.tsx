@@ -17,7 +17,7 @@ export function PlayerTag({ name, seat, you, active, connected = true, left, sco
   const line = left ? "Left the table" : !connected ? "Reconnecting…" : status;
   return (
     <div className={`player ${active ? "is-active" : ""} ${connected && !left ? "" : "is-away"}`}>
-      <span className={`avatar ${seat === "two" ? "avatar--two" : ""}`} aria-hidden="true">{piece ?? (name ?? "?").slice(0, 1)}</span>
+      <span className={`avatar ${seat === "two" ? "avatar--two" : ""}`} aria-hidden="true">{piece ?? (name ?? "?").trim().slice(0, 1).toLocaleUpperCase()}</span>
       <span className="player__who">
         <b>{name ?? "Waiting…"}{you && <em> you</em>}</b>
         {line && <small>{line}</small>}

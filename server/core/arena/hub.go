@@ -80,21 +80,70 @@ func (h *Hub) JoinMatch(options JoinOptions) (*Player, *Room, error) {
 			waiting.connected.Store(false)
 		}
 		player.Mark = "one"
+		player.waitingSince = time.Now()
 		h.waiting[key] = player
 		return player, nil, nil
 	}
 
-	host := waiting.options
-	game, gameErr := NewGameWithMode(host.Kind, host.Mode)
-	if gameErr != nil {
-		return nil, nil, gameErr
-	}
-	waiting.Mark, player.Mark = "one", "two"
-	room := newRoom(uuid.NewString(), game, waiting, player, settingsFrom(host), h.scheduleCleanup)
 	delete(h.waiting, key)
-	h.rooms[room.id] = room
-	h.playerRooms[waiting.ID], h.playerRooms[player.ID] = room, room
+	room, err := h.seatLocked(waiting, player)
+	if err != nil {
+		return nil, nil, err
+	}
 	return player, room, nil
+}
+
+// seatLocked opens a room for two players; the host's settings win.
+func (h *Hub) seatLocked(host, guest *Player) (*Room, error) {
+	game, err := NewGameWithMode(host.options.Kind, host.options.Mode)
+	if err != nil {
+		return nil, err
+	}
+	host.Mark, guest.Mark = "one", "two"
+	room := newRoom(uuid.NewString(), game, host, guest, settingsFrom(host.options), h.scheduleCleanup)
+	h.rooms[room.id] = room
+	h.playerRooms[host.ID], h.playerRooms[guest.ID] = room, room
+	return room, nil
+}
+
+// fallbackLocked pairs a public player who has waited queueFallbackAfter
+// with anyone waiting in the same game and mode, whatever series length or
+// clock they asked for. Whoever waited longer hosts, so their settings win.
+// Private tables never fall back.
+func (h *Hub) fallbackLocked(player *Player) *Room {
+	var ownKey MatchKey
+	found := false
+	for key, waiting := range h.waiting {
+		if waiting == player {
+			ownKey, found = key, true
+			break
+		}
+	}
+	if !found || ownKey.InviteCode != "" || time.Since(player.waitingSince) < queueFallbackAfter {
+		return nil
+	}
+	for key, other := range h.waiting {
+		if other == player || key.InviteCode != "" || key.Kind != ownKey.Kind || key.Mode != ownKey.Mode {
+			continue
+		}
+		if !other.connected.Load() || identity.SameAccount(other.ID, player.ID) {
+			continue
+		}
+		host, guest := other, player
+		if player.waitingSince.Before(other.waitingSince) {
+			host, guest = player, other
+		}
+		delete(h.waiting, ownKey)
+		delete(h.waiting, key)
+		room, err := h.seatLocked(host, guest)
+		if err != nil {
+			return nil
+		}
+		// Neither socket is joining right now, so tell both about the table.
+		room.Broadcast()
+		return room
+	}
+	return nil
 }
 
 func (h *Hub) reconnectLocked(options JoinOptions) (*Player, *Room) {
@@ -124,6 +173,9 @@ func (h *Hub) reconnectLocked(options JoinOptions) (*Player, *Room) {
 		existing.updated = time.Now()
 		existing.broadcastStateLocked()
 	}
+	if player != nil {
+		h.scheduleAbandonCheck(existing)
+	}
 	delete(h.playerRooms, options.PlayerID)
 	return nil, nil
 }
@@ -149,6 +201,9 @@ func (h *Hub) LeaveRoom(player *Player, room *Room) {
 		delete(h.playerRooms, player.ID)
 	}
 	h.mu.Unlock()
+	if player.Mark != "spectator" {
+		h.scheduleAbandonCheck(room)
+	}
 }
 
 func (h *Hub) joinSpectatorLocked(options JoinOptions) (*Player, *Room, error) {
@@ -166,12 +221,16 @@ func (h *Hub) joinSpectatorLocked(options JoinOptions) (*Player, *Room, error) {
 	return player, room, nil
 }
 
-func (h *Hub) LeaveWaiting(options JoinOptions, player *Player) {
+// LeaveWaiting drops a player from whichever queue holds them. It searches by
+// player rather than recomputing the key, because callers pass the raw
+// request options while queues are keyed by the normalised ones.
+func (h *Hub) LeaveWaiting(player *Player) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	key := matchKey(options)
-	if h.waiting[key] == player {
-		delete(h.waiting, key)
+	for key, waiting := range h.waiting {
+		if waiting == player {
+			delete(h.waiting, key)
+		}
 	}
 }
 
@@ -181,6 +240,9 @@ func (h *Hub) MatchWaiting(player *Player) *Room {
 	for range ticker.C {
 		h.mu.Lock()
 		room := h.playerRooms[player.ID]
+		if room == nil && player.connected.Load() {
+			room = h.fallbackLocked(player)
+		}
 		h.mu.Unlock()
 		if room != nil {
 			return room
@@ -190,6 +252,38 @@ func (h *Hub) MatchWaiting(player *Player) *Room {
 		}
 	}
 	return nil
+}
+
+// scheduleAbandonCheck removes a room once both seated players have been gone
+// for roomRetention. Finished series are cleaned by scheduleCleanup; this
+// covers series abandoned between rounds, which would otherwise live forever.
+func (h *Hub) scheduleAbandonCheck(room *Room) {
+	time.AfterFunc(roomRetention, func() { h.removeIfAbandoned(room) })
+}
+
+func (h *Hub) removeIfAbandoned(room *Room) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	room.mu.Lock()
+	for _, player := range room.players {
+		if player != nil && player.connected.Load() {
+			room.mu.Unlock()
+			return
+		}
+	}
+	room.stopTurnTimerLocked()
+	room.status = "archived"
+	participants := append([]*Player{}, room.players[:]...)
+	for _, spectator := range room.spectators {
+		participants = append(participants, spectator)
+	}
+	room.mu.Unlock()
+	delete(h.rooms, room.id)
+	for _, player := range participants {
+		if player != nil && h.playerRooms[player.ID] == room {
+			delete(h.playerRooms, player.ID)
+		}
+	}
 }
 
 func (h *Hub) scheduleCleanup(room *Room) {
@@ -219,11 +313,8 @@ func normalizeJoinOptions(options JoinOptions) (JoinOptions, error) {
 		options.BestOf = 1
 	}
 	if options.Kind == Chess {
-		switch options.TimeControl {
-		case "untimed", "3m+2s", "10m", "15m+10s":
-		default:
-			options.TimeControl = "10m"
-		}
+		// Each chess mode has exactly one clock; the mode decides it.
+		options.TimeControl = map[string]string{"blitz": "3m+2s", "rapid": "10m", "standard": "15m+10s"}[options.Mode]
 	} else {
 		switch options.TimeControl {
 		case "15s", "30s", "60s":

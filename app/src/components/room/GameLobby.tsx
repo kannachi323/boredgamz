@@ -23,7 +23,7 @@ export function GameLobby({ game, error, onJoin }: Props) {
   const [theme, setTheme] = useBoardTheme(game);
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
-  const next = encodeURIComponent(location.pathname);
+  const next = encodeURIComponent(location.pathname + location.search);
 
   const settings = (): JoinRequest => {
     const selected = game.modes.find((item) => item.id === mode)!;
@@ -106,7 +106,7 @@ export function GameLobby({ game, error, onJoin }: Props) {
             <div className="actions__divider">or join a friend</div>
             <form className="actions__row" onSubmit={joinCode}>
               <label className="sr-only" htmlFor="room-code">Private table code</label>
-              <input id="room-code" className="field field--code" style={{ gridColumn: "1 / 2", width: "11ch" }} placeholder="Code" value={code} maxLength={6} autoComplete="off" spellCheck={false} aria-invalid={Boolean(codeError)} onChange={(event) => { setCode(normalizeCode(event.target.value)); setCodeError(""); }} />
+              <input id="room-code" className="field field--code actions__code" placeholder="Code" value={code} maxLength={6} autoComplete="off" inputMode="numeric" pattern="[0-9]*" spellCheck={false} aria-invalid={Boolean(codeError)} onChange={(event) => { setCode(normalizeCode(event.target.value)); setCodeError(""); }} />
               <button className="btn btn--ink" type="submit" disabled={code.length < 6}>Join</button>
             </form>
             {codeError && <p className="alert" role="alert">{codeError}</p>}

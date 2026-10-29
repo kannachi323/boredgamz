@@ -1,8 +1,8 @@
 # BoredGamz
 
-Six classic tabletop games, played live in the browser: Tic-Tac-Toe, Connect Four, Gomoku, Chess, free-play Poker and Mahjong Solitaire. Sign in, pick a table, and play a stranger or a friend with a private code. Spectators can watch and everyone can chat. If you reload, you rejoin your seat. The server enforces every rule.
+Six classic tabletop games, played live in the browser: Tic-Tac-Toe, Connect Four, Gomoku, Chess, free-play Poker and Mahjong Solitaire. Sign in, pick a table, and play a stranger or a friend with a six-digit private code. If nobody with your exact settings turns up within 20 seconds, the queue matches anyone in the same game and mode. Spectators can watch and everyone can chat. If you reload, you rejoin your seat. The server enforces every rule.
 
-![Lobby](docs/screenshots/after/home-desktop-light.jpg)
+![Lobby](docs/screenshots/polish/home-1440.jpg)
 
 | Game | Modes | Options |
 | --- | --- | --- |

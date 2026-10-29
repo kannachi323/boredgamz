@@ -238,6 +238,11 @@ func (r *Room) ReadyRematch(playerID string) error {
 }
 
 func (r *Room) finishRoundLocked(winner string) {
+	// Charge the running chess clock for the turn in progress so the final
+	// clocks show the real time used (resign, draw, disconnect).
+	if remaining, clocked := r.liveChessClockLocked(r.turn); clocked {
+		r.clockRemaining[r.turn] = max(0, remaining)
+	}
 	r.stopTurnTimerLocked()
 	r.winner = winner
 	if winner != "" {
@@ -321,14 +326,22 @@ func (r *Room) snapshotLocked() *Snapshot {
 func (r *Room) resetTurnTimerLocked() {
 	r.stopTurnTimerLocked()
 	duration := timeControlDuration(r.settings.TimeControl)
+	// Each side's first chess move has its own short window that doesn't
+	// touch the bank, so nobody loses clock time while the board loads.
+	opening := r.game.Kind == Chess && r.clockRemaining != nil && len(r.game.chessMoves) < 2
 	if r.game.Kind == Chess && r.clockRemaining != nil {
 		duration = r.clockRemaining[r.turn]
+		if opening {
+			duration = chessFirstMoveWindow
+		}
 	}
 	if duration == 0 || r.status != "playing" {
 		return
 	}
 	deadline := time.Now().UTC().Add(duration)
-	r.turnStarted = time.Now()
+	if !opening {
+		r.turnStarted = time.Now()
+	}
 	r.turnDeadline = &deadline
 	r.timerVersion++
 	version, timedMark := r.timerVersion, r.turn
@@ -338,7 +351,7 @@ func (r *Room) resetTurnTimerLocked() {
 		if r.status != "playing" || r.timerVersion != version || r.turn != timedMark {
 			return
 		}
-		if r.clockRemaining != nil {
+		if r.clockRemaining != nil && !opening {
 			r.clockRemaining[timedMark] = 0
 		}
 		r.finishRoundLocked(opposite(timedMark))
@@ -392,6 +405,9 @@ func (r *Room) clockSnapshotLocked() map[string]int64 {
 	}
 	return map[string]int64{"one": one.Milliseconds(), "two": two.Milliseconds()}
 }
+
+// chessFirstMoveWindow is how long each side has for its first move.
+var chessFirstMoveWindow = 30 * time.Second
 
 func chessTimeControl(control string) (time.Duration, time.Duration) {
 	switch control {
