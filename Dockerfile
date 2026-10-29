@@ -1,7 +1,7 @@
 FROM node:22-alpine AS web-build
 WORKDIR /src/app
 COPY app/package.json app/package-lock.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 COPY app/ ./
 RUN npm run build
 

@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/mail"
 	"os"
 	"strings"
+	"unicode"
 )
 
 const maxAuthBody = 8 << 10
@@ -85,13 +87,18 @@ func SignUp(database *db.Database) http.HandlerFunc {
 		}
 		request.Email = strings.ToLower(strings.TrimSpace(request.Email))
 		request.Username = strings.TrimSpace(request.Username)
-		if !validUsername(request.Username) || !validEmail(request.Email) || len(request.Password) < 12 || len(request.Password) > 128 {
-			http.Error(w, "use a 2–24 character display name, valid email, and a password between 12 and 128 characters", http.StatusBadRequest)
+		if !validUsername(request.Username) || !validEmail(request.Email) || !validPassword(request.Password) {
+			http.Error(w, "use a 2–24 character display name, a valid email, and a password of 12–72 characters", http.StatusBadRequest)
 			return
 		}
 		user, err := database.CreateUser(request.Username, request.Email, request.Password)
-		if err != nil {
+		if errors.Is(err, db.ErrEmailTaken) {
 			http.Error(w, "account could not be created", http.StatusConflict)
+			return
+		}
+		if err != nil {
+			slog.Error("signup failed", "err", err)
+			http.Error(w, "account could not be created", http.StatusInternalServerError)
 			return
 		}
 		if err := issueAuthCookies(w, user.ID); err != nil {
@@ -111,7 +118,7 @@ func LogIn(database *db.Database) http.HandlerFunc {
 			return
 		}
 		request.Email = strings.ToLower(strings.TrimSpace(request.Email))
-		if !validEmail(request.Email) || len(request.Password) > 128 {
+		if !validEmail(request.Email) || len(request.Password) > maxPasswordBytes {
 			http.Error(w, "invalid email or password", http.StatusUnauthorized)
 			return
 		}
@@ -143,6 +150,10 @@ func LogOut() http.HandlerFunc {
 }
 
 func decodeAuthJSON(w http.ResponseWriter, r *http.Request, target any) error {
+	// Requiring JSON keeps HTML forms (which cannot set this type) out.
+	if mediaType := strings.TrimSpace(strings.Split(r.Header.Get("Content-Type"), ";")[0]); !strings.EqualFold(mediaType, "application/json") {
+		return errors.New("request body must be JSON")
+	}
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxAuthBody))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
@@ -159,13 +170,21 @@ func validEmail(value string) bool {
 	return err == nil && address.Address == value && len(value) <= 254
 }
 
+// bcrypt only reads the first 72 bytes and x/crypto rejects longer input, so
+// the limit is enforced up front instead of failing inside CreateUser.
+const minPasswordRunes, maxPasswordBytes = 12, 72
+
+func validPassword(value string) bool {
+	return len([]rune(value)) >= minPasswordRunes && len(value) <= maxPasswordBytes
+}
+
 func validUsername(value string) bool {
 	runes := []rune(value)
 	if len(runes) < 2 || len(runes) > 24 {
 		return false
 	}
 	for _, char := range runes {
-		if char < 32 || char == 127 {
+		if unicode.IsControl(char) || unicode.Is(unicode.Cf, char) {
 			return false
 		}
 	}

@@ -18,6 +18,9 @@ func Serve(hub *Hub, options JoinOptions, conn *websocket.Conn) error {
 	send := player.sender()
 	defer func() {
 		if room == nil {
+			room = hub.assignedRoom(player)
+		}
+		if room == nil {
 			player.connected.Store(false)
 			hub.LeaveWaiting(player)
 		} else {
@@ -28,9 +31,9 @@ func Serve(hub *Hub, options JoinOptions, conn *websocket.Conn) error {
 	roomReady := make(chan *Room, 1)
 	if room == nil {
 		send <- ServerMessage{Type: "waiting", Message: "Looking for a poker opponent"}
-		go func() { roomReady <- hub.MatchWaiting(player) }()
+		go func(ready chan<- *Room) { ready <- hub.MatchWaiting(player) }(roomReady)
 	} else {
-		room.SendState(player)
+		room.Broadcast()
 	}
 	incoming := make(chan ClientMessage, 8)
 	done := make(chan struct{})
@@ -55,10 +58,16 @@ func Serve(hub *Hub, options JoinOptions, conn *websocket.Conn) error {
 			if matched == nil {
 				return nil
 			}
+			// The opponent's join already broadcast the first state to us.
 			room = matched
 			roomReady = nil
-			room.SendState(player)
 		case message := <-incoming:
+			if room == nil {
+				// Matched, but the poller hasn't told this loop yet.
+				if assigned := hub.assignedRoom(player); assigned != nil {
+					room, roomReady = assigned, nil
+				}
+			}
 			if room == nil {
 				sendPokerError(player, "Wait for an opponent before acting")
 				continue

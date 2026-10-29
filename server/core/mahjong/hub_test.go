@@ -11,14 +11,16 @@ func TestHubSeparatesModesAndPrivateCodes(t *testing.T) {
 	first, room, err := hub.Join(JoinOptions{PlayerID: "a", Name: "Alice", Mode: "garden", InviteCode: "LEAF"})
 	require.NoError(t, err)
 	require.Nil(t, room)
-	_, room, err = hub.Join(JoinOptions{PlayerID: "b", Name: "Bob", Mode: "duel", InviteCode: "LEAF"})
+	_, room, err = hub.Join(JoinOptions{PlayerID: "b", Name: "Bob", Mode: "garden"})
 	require.NoError(t, err)
-	require.Nil(t, room)
-	second, room, err := hub.Join(JoinOptions{PlayerID: "c", Name: "Cora", Mode: "garden", InviteCode: "leaf"})
+	require.Nil(t, room, "public players never land on a private table")
+	// The guest asks for duel; the host's garden wins.
+	second, room, err := hub.Join(JoinOptions{PlayerID: "c", Name: "Cora", Mode: "duel", InviteCode: "leaf"})
 	require.NoError(t, err)
 	require.NotNil(t, room)
 	require.Equal(t, first, room.players[0])
 	require.Equal(t, second, room.players[1])
+	require.Equal(t, "garden", room.mode)
 	room.timer.Stop()
 }
 

@@ -42,6 +42,7 @@ type PlayerView struct {
 	Name      string `json:"name"`
 	Mark      string `json:"mark"`
 	Connected bool   `json:"connected"`
+	Left      bool   `json:"left,omitempty"`
 }
 
 type ChatMessage struct {
@@ -53,6 +54,7 @@ type ChatMessage struct {
 }
 
 type Snapshot struct {
+	ViewerID      string           `json:"viewerId,omitempty"`
 	RoomID        string           `json:"roomId"`
 	Kind          GameKind         `json:"kind"`
 	Status        string           `json:"status"`

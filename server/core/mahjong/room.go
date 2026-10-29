@@ -297,6 +297,9 @@ func (r *Room) snapshotLocked(viewer *Player) *Snapshot {
 	state := r.stateIndex(viewerSeat)
 	board, removed := r.boards[state], r.removed[state]
 	s := &Snapshot{RoomID: r.id, Mode: r.mode, Status: r.status, Tiles: append([]Tile{}, board.Tiles...), Removed: append([]bool{}, removed...), Free: []int{}, ViewerSeat: viewerSeat, Winner: r.winner, Message: r.message, Chat: append([]ChatMessage{}, r.chat...), Spectators: len(r.spectators), Ready: []int{}, InviteCode: r.inviteCode, StartedAt: r.startedAt, Deadline: cloneTime(r.deadline), Reshuffles: r.reshuffles}
+	if viewer != nil {
+		s.ViewerID = viewer.ID
+	}
 	if r.mode != "duel" {
 		s.RemovedBy = append([]int{}, r.removedBy...)
 	} else {
@@ -309,7 +312,7 @@ func (r *Room) snapshotLocked(viewer *Player) *Snapshot {
 	}
 	for seat, player := range r.players {
 		seatState := r.stateIndex(seat)
-		s.Seats[seat] = &SeatView{ID: player.ID, Name: player.Name, Pairs: r.pairs[seat], Remaining: r.boards[seatState].Remaining(r.removed[seatState]), Connected: player.connected.Load()}
+		s.Seats[seat] = &SeatView{ID: player.ID, Name: player.Name, Pairs: r.pairs[seat], Remaining: r.boards[seatState].Remaining(r.removed[seatState]), Connected: player.connected.Load(), Left: player.left.Load()}
 	}
 	if viewerSeat >= 0 {
 		s.HintsRemaining = r.hints[viewerSeat]
@@ -368,4 +371,12 @@ func cloneTime(value *time.Time) *time.Time {
 	}
 	copy := *value
 	return &copy
+}
+
+// Broadcast sends every participant the current state. It runs when someone
+// joins or rejoins, so the others see them seated and connected again.
+func (r *Room) Broadcast() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.broadcastLocked()
 }

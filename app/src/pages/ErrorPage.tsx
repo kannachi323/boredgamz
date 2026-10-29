@@ -1,16 +1,15 @@
-import { ArrowLeft, Dices } from 'lucide-react'
-import { Link, useRouteError } from 'react-router-dom'
+import { Link, isRouteErrorResponse, useRouteError } from "react-router-dom";
+import { BoardArt } from "../games/BoardArt";
 
 export function ErrorPage() {
-  const error = useRouteError()
-  const message = error instanceof Error ? error.message : 'That table could not be found.'
+  const error = useRouteError();
+  const notFound = !error || (isRouteErrorResponse(error) && error.status === 404);
   return (
-    <main className="error-page">
-      <Dices size={42} aria-hidden="true" />
-      <p className="eyebrow">Wrong turn</p>
-      <h1>We lost the board.</h1>
-      <p>{message}</p>
-      <Link className="button button--primary" to="/"><ArrowLeft size={18} /> Back home</Link>
-    </main>
-  )
+    <section className="error-page">
+      <div className="waiting__art" style={{ animation: "none" }}><BoardArt slug="tictactoe" /></div>
+      <h1>{notFound ? "No table here." : "Something broke."}</h1>
+      <p>{notFound ? "That page doesn't exist." : "Reload the page or head back to the games."}</p>
+      <Link className="btn btn--ink" to="/">All games</Link>
+    </section>
+  );
 }

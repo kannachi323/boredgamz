@@ -12,9 +12,11 @@ type Player struct {
 	ID         string
 	Name       string
 	Seat       int
+	mode       string // requested mode; the host's wins on private tables
 	mu         sync.RWMutex
 	send       chan ServerMessage
 	connected  atomic.Bool
+	left       atomic.Bool // pressed Leave; won't be back
 	generation atomic.Uint64
 }
 
@@ -42,6 +44,7 @@ func (p *Player) replaceSender() {
 	p.send = make(chan ServerMessage, 32)
 	p.mu.Unlock()
 	p.connected.Store(true)
+	p.left.Store(false)
 	p.generation.Add(1)
 }
 
@@ -67,9 +70,11 @@ type SeatView struct {
 	Pairs     int    `json:"pairs"`
 	Remaining int    `json:"remaining"`
 	Connected bool   `json:"connected"`
+	Left      bool   `json:"left,omitempty"`
 }
 
 type Snapshot struct {
+	ViewerID       string        `json:"viewerId,omitempty"`
 	RoomID         string        `json:"roomId"`
 	Mode           string        `json:"mode"`
 	Status         string        `json:"status"`

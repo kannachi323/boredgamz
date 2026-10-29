@@ -15,6 +15,7 @@ func TestAuthJSONRejectsUnknownTrailingAndOversizedInput(t *testing.T) {
 		`{"email":"` + strings.Repeat("a", maxAuthBody) + `"}`,
 	} {
 		request := httptest.NewRequest("POST", "/api/signup", strings.NewReader(body))
+		request.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 		var target SignUpRequest
 		require.Error(t, decodeAuthJSON(recorder, request, &target))
@@ -43,4 +44,26 @@ func TestUsernameValidation(t *testing.T) {
 	require.False(t, validUsername("A"))
 	require.False(t, validUsername(strings.Repeat("x", 25)))
 	require.False(t, validUsername("bad\nname"))
+}
+
+func TestAuthJSONRequiresJSONContentType(t *testing.T) {
+	body := `{"email":"a@example.com","password":"long-enough-password"}`
+	request := httptest.NewRequest("POST", "/api/login", strings.NewReader(body))
+	request.Header.Set("Content-Type", "text/plain")
+	var target LogInRequest
+	require.Error(t, decodeAuthJSON(httptest.NewRecorder(), request, &target))
+
+	request = httptest.NewRequest("POST", "/api/login", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json; charset=utf-8")
+	require.NoError(t, decodeAuthJSON(httptest.NewRecorder(), request, &target))
+}
+
+func TestPasswordLimitsRespectBcrypt(t *testing.T) {
+	require.False(t, validPassword("short"))
+	require.True(t, validPassword("twelve-chars"))
+	require.True(t, validPassword(strings.Repeat("x", 72)))
+	require.False(t, validPassword(strings.Repeat("x", 73)))
+	// 24 three-byte runes = 72 bytes is allowed; 25 is not.
+	require.True(t, validPassword(strings.Repeat("密", 24)))
+	require.False(t, validPassword(strings.Repeat("密", 25)))
 }

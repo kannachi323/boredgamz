@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -41,8 +42,16 @@ func Health(startedAt time.Time, databaseReady func() bool) http.HandlerFunc {
 	}
 }
 
-func Ready() http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
+// Ready reports 503 while a dependency (the database) is unreachable so a
+// load balancer stops routing new players here.
+func Ready(check func(context.Context) error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+		if err := check(ctx); err != nil {
+			WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable", "service": "boredgamz"})
+			return
+		}
 		WriteJSON(w, http.StatusOK, map[string]string{"status": "ready", "service": "boredgamz"})
 	}
 }

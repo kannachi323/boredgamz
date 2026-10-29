@@ -286,6 +286,7 @@ func (r *Room) snapshotForLocked(viewer *Player) *Snapshot {
 	snapshot := r.snapshotLocked()
 	if viewer != nil {
 		snapshot.ViewerMark = viewer.Mark
+		snapshot.ViewerID = viewer.ID
 	}
 	return snapshot
 }
@@ -481,4 +482,12 @@ func opposite(mark string) string {
 		return "two"
 	}
 	return "one"
+}
+
+// Broadcast sends every participant the current state. It runs when someone
+// joins or rejoins, so the others see them seated and connected again.
+func (r *Room) Broadcast() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.broadcastStateLocked()
 }

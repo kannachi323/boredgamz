@@ -10,9 +10,12 @@ type Player struct {
 	Name string
 	Mark string
 
+	options JoinOptions // requested settings; the host's win on private tables
+
 	mu         sync.RWMutex
 	send       chan ServerMessage
 	connected  atomic.Bool
+	left       atomic.Bool // pressed Leave; won't be back
 	generation atomic.Uint64
 }
 
@@ -27,6 +30,7 @@ func (p *Player) replaceSender() {
 	p.send = make(chan ServerMessage, 32)
 	p.mu.Unlock()
 	p.connected.Store(true)
+	p.left.Store(false)
 	p.generation.Add(1)
 }
 
@@ -37,5 +41,5 @@ func (p *Player) sender() chan ServerMessage {
 }
 
 func (p *Player) view() *PlayerView {
-	return &PlayerView{ID: p.ID, Name: p.Name, Mark: p.Mark, Connected: p.connected.Load()}
+	return &PlayerView{ID: p.ID, Name: p.Name, Mark: p.Mark, Connected: p.connected.Load(), Left: p.left.Load()}
 }

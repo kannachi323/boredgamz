@@ -159,3 +159,36 @@ func readUntilState(t *testing.T, connection *websocket.Conn) arena.ServerMessag
 	t.Fatal("state message was not received")
 	return arena.ServerMessage{}
 }
+
+func TestOpponentSeesReconnectAfterReload(t *testing.T) {
+	testServer := newTestServer(t)
+	defer testServer.Close()
+	base := "ws" + strings.TrimPrefix(testServer.URL, "http") + "/api/v1/arena/connect-four"
+	header := http.Header{"Origin": []string{"http://allowed.example"}}
+
+	one, _, err := websocket.DefaultDialer.Dial(base+"?playerId=reload-one&name=Ada", header)
+	require.NoError(t, err)
+	one.SetReadDeadline(time.Now().Add(3 * time.Second))
+	require.Equal(t, "waiting", readMessage(t, one).Type)
+	two, _, err := websocket.DefaultDialer.Dial(base+"?playerId=reload-two&name=Bo", header)
+	require.NoError(t, err)
+	defer two.Close()
+	two.SetReadDeadline(time.Now().Add(3 * time.Second))
+	readUntilState(t, two)
+
+	// Ada's tab reloads: the old socket drops and a new one joins with the same ID.
+	one.Close()
+	disconnected := readUntilState(t, two)
+	require.False(t, disconnected.State.Players[0].Connected)
+
+	again, _, err := websocket.DefaultDialer.Dial(base+"?playerId=reload-one&name=Ada", header)
+	require.NoError(t, err)
+	defer again.Close()
+	again.SetReadDeadline(time.Now().Add(3 * time.Second))
+	resumed := readUntilState(t, again)
+	require.Equal(t, "playing", resumed.State.Status)
+	require.Equal(t, "one", resumed.State.ViewerMark)
+
+	back := readUntilState(t, two)
+	require.True(t, back.State.Players[0].Connected, "the opponent must see the player back")
+}

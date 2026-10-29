@@ -6,3 +6,5 @@
 **/.env
 **/*_test.go
 docs
+.claude
+**/.vite

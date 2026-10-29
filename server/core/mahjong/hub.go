@@ -1,6 +1,7 @@
 package mahjong
 
 import (
+	"boredgamz/core/identity"
 	"errors"
 	"strings"
 	"sync"
@@ -10,6 +11,15 @@ import (
 )
 
 type matchKey struct{ mode, invite string }
+
+// keyFor queues public players by mode. A private code alone identifies the
+// table: whoever joins with it plays the host's mode.
+func keyFor(mode, invite string) matchKey {
+	if invite != "" {
+		return matchKey{invite: invite}
+	}
+	return matchKey{mode: mode}
+}
 
 type Hub struct {
 	mu          sync.Mutex
@@ -60,23 +70,32 @@ func (h *Hub) Join(input JoinOptions) (*Player, *Room, error) {
 	if room := h.playerRooms[input.PlayerID]; room != nil {
 		room.mu.Lock()
 		player := room.participantLocked(input.PlayerID)
-		if player != nil {
+		// Same table: this is a reconnect. A different table means the player
+		// moved on, so they leave the old one first.
+		if player != nil && keyFor(room.mode, room.inviteCode) == keyFor(normalizeMode(input.Mode), input.InviteCode) {
 			player.replaceSender()
 			room.mu.Unlock()
 			return player, room, nil
 		}
+		if player != nil {
+			room.leaveLocked(player)
+		}
 		room.mu.Unlock()
 		delete(h.playerRooms, input.PlayerID)
+		if player != nil && player.Seat >= 0 {
+			h.scheduleCleanup(room)
+		}
 	}
 	player := newPlayer(input.PlayerID, input.Name)
-	key := matchKey{input.Mode, input.InviteCode}
+	player.mode = input.Mode
+	key := keyFor(input.Mode, input.InviteCode)
 	waiting := h.waiting[key]
-	if waiting == nil || !waiting.connected.Load() || waiting.ID == player.ID {
+	if waiting == nil || !waiting.connected.Load() || identity.SameAccount(waiting.ID, player.ID) {
 		player.Seat = 0
 		h.waiting[key] = player
 		return player, nil, nil
 	}
-	room, err := newRoom(uuid.NewString(), input.Mode, waiting, player, input.InviteCode)
+	room, err := newRoom(uuid.NewString(), waiting.mode, waiting, player, input.InviteCode)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -118,18 +137,7 @@ func (h *Hub) Leave(player *Player, room *Room) {
 		return
 	}
 	room.mu.Lock()
-	player.connected.Store(false)
-	if player.Seat < 0 {
-		delete(room.spectators, player.ID)
-	} else if room.mode == "duel" && room.status == "playing" {
-		room.status, room.winner = "finished", 1-player.Seat
-		room.message = room.players[1-player.Seat].Name + " wins after the opponent left"
-		if room.timer != nil {
-			room.timer.Stop()
-		}
-		room.deadline = nil
-	}
-	room.broadcastLocked()
+	room.leaveLocked(player)
 	room.mu.Unlock()
 	h.mu.Lock()
 	if h.playerRooms[player.ID] == room {
@@ -198,4 +206,31 @@ func (h *Hub) cleanupRoomIfEmpty(room *Room) {
 			delete(h.playerRooms, player.ID)
 		}
 	}
+}
+
+// assignedRoom returns the room matchmaking put this player in, if any. A
+// socket can close before its loop notices the match; it must still count
+// as a disconnect from that room, not as leaving the queue.
+func (h *Hub) assignedRoom(player *Player) *Room {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.playerRooms[player.ID]
+}
+
+// leaveLocked removes a participant on purpose: leaving a live duel concedes
+// it. The caller holds r.mu.
+func (r *Room) leaveLocked(player *Player) {
+	player.connected.Store(false)
+	player.left.Store(true)
+	if player.Seat < 0 {
+		delete(r.spectators, player.ID)
+	} else if r.mode == "duel" && r.status == "playing" {
+		r.status, r.winner = "finished", 1-player.Seat
+		r.message = r.players[1-player.Seat].Name + " wins after the opponent left"
+		if r.timer != nil {
+			r.timer.Stop()
+		}
+		r.deadline = nil
+	}
+	r.broadcastLocked()
 }

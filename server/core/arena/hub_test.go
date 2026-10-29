@@ -60,6 +60,19 @@ func TestSameIdentityCannotMatchItself(t *testing.T) {
 	require.Equal(t, second, hub.waiting[MatchKey{Kind: Gomoku, Mode: "freestyle", BestOf: 1, TimeControl: "untimed"}])
 }
 
+func TestSameAccountInAnotherTabCannotMatchItself(t *testing.T) {
+	hub := NewHub()
+	_, room, err := hub.Join(TicTacToe, "account-1:tabA", "Ada")
+	require.NoError(t, err)
+	require.Nil(t, room)
+	_, room, err = hub.Join(TicTacToe, "account-1:tabB", "Ada")
+	require.NoError(t, err)
+	require.Nil(t, room)
+	_, room, err = hub.Join(TicTacToe, "account-2:tabA", "Bo")
+	require.NoError(t, err)
+	require.NotNil(t, room)
+}
+
 func TestOldConnectionCannotDisconnectReconnectedPlayer(t *testing.T) {
 	hub := NewHub()
 	one, _, err := hub.Join(TicTacToe, "one", "One")
@@ -89,16 +102,25 @@ func TestQueuesAreIsolatedByModeAndInviteCode(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, room)
 
-	_, room, err = hub.JoinMatch(JoinOptions{Kind: TicTacToe, Mode: "misere", InviteCode: "table-a", PlayerID: "two"})
+	// A public player with the same mode never lands on a private table.
+	_, room, err = hub.JoinMatch(JoinOptions{Kind: TicTacToe, Mode: "classic", PlayerID: "public"})
 	require.NoError(t, err)
 	require.Nil(t, room)
-	require.NotNil(t, hub.waiting[MatchKey{Kind: TicTacToe, Mode: "classic", BestOf: 1, TimeControl: "untimed", InviteCode: "TABLE-A"}])
+	// A different code waits separately.
+	_, room, err = hub.JoinMatch(JoinOptions{Kind: TicTacToe, Mode: "classic", InviteCode: "table-b", PlayerID: "other"})
+	require.NoError(t, err)
+	require.Nil(t, room)
+	require.NotNil(t, hub.waiting[MatchKey{Kind: TicTacToe, InviteCode: "TABLE-A"}])
 	require.True(t, one.connected.Load())
 
-	_, room, err = hub.JoinMatch(JoinOptions{Kind: TicTacToe, Mode: "classic", InviteCode: "TABLE-A", PlayerID: "three"})
+	// The guest only needs the code; the host's mode and series length win.
+	_, room, err = hub.JoinMatch(JoinOptions{Kind: TicTacToe, Mode: "misere", BestOf: 7, InviteCode: "TABLE-A", PlayerID: "three"})
 	require.NoError(t, err)
 	require.NotNil(t, room)
-	require.Equal(t, "private", room.Snapshot().Settings.Visibility)
+	snapshot := room.Snapshot()
+	require.Equal(t, "private", snapshot.Settings.Visibility)
+	require.Equal(t, "classic", snapshot.Settings.Mode)
+	require.Equal(t, 1, snapshot.Settings.BestOf)
 }
 
 func TestBestOfSeriesNeedsBothPlayersForNextRound(t *testing.T) {
@@ -210,4 +232,29 @@ func TestChessClockBanksApplyIncrement(t *testing.T) {
 	after := room.Snapshot().Clocks
 	require.Greater(t, after["one"], int64(181000))
 	require.LessOrEqual(t, after["two"], int64(180000))
+}
+
+func TestNewTableRequestReleasesFinishedRoomButNotLiveGame(t *testing.T) {
+	hub := NewHub()
+	one, _, err := hub.JoinMatch(JoinOptions{Kind: TicTacToe, PlayerID: "one", InviteCode: "TAAAAA"})
+	require.NoError(t, err)
+	_, room, err := hub.JoinMatch(JoinOptions{Kind: TicTacToe, PlayerID: "two", InviteCode: "TAAAAA"})
+	require.NoError(t, err)
+
+	// Mid-game, asking for another table resumes the live game instead.
+	_, resumed, err := hub.JoinMatch(JoinOptions{Kind: TicTacToe, PlayerID: "one", InviteCode: "TBBBBB"})
+	require.NoError(t, err)
+	require.Same(t, room, resumed)
+
+	require.NoError(t, room.Resign(one.ID))
+	// Same table after the game: reconnect.
+	_, again, err := hub.JoinMatch(JoinOptions{Kind: TicTacToe, PlayerID: "one", InviteCode: "TAAAAA"})
+	require.NoError(t, err)
+	require.Same(t, room, again)
+	// Different table after the game: queue for the new one.
+	_, fresh, err := hub.JoinMatch(JoinOptions{Kind: TicTacToe, PlayerID: "one", InviteCode: "TBBBBB"})
+	require.NoError(t, err)
+	require.Nil(t, fresh)
+	require.False(t, room.Snapshot().Players[0].Connected)
+	require.True(t, room.Snapshot().Players[0].Left)
 }

@@ -1,20 +1,21 @@
-import type { ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
-import { NavBarV1 } from './components/NavBar/NavBarV1'
-import { FooterV1 } from './features/Footer/FooterV1'
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { TopBar } from "./components/TopBar";
+import { useShell } from "./stores/useShell";
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const location = useLocation()
-  const immersive = ['/games/tictactoe', '/games/connect-four', '/games/gomoku', '/games/chess', '/games/poker', '/games/mahjong'].includes(location.pathname)
-  if (immersive) {
-    return <div className="site-shell"><a className="skip-link" href="#main-content">Skip to content</a><div id="main-content">{children}</div></div>
-  }
+  const immersive = useShell((shell) => shell.immersive);
   return (
-    <div className="site-shell">
+    <>
       <a className="skip-link" href="#main-content">Skip to content</a>
-      <NavBarV1 />
-      <main id="main-content">{children}</main>
-      <FooterV1 />
-    </div>
-  )
+      {!immersive && <TopBar />}
+      <main id="main-content" className={immersive ? undefined : "site-main"}>{children}</main>
+      {!immersive && (
+        <footer className="footer">
+          <span>© {new Date().getFullYear()} BoredGamz</span>
+          <Link to="/">Games</Link>
+        </footer>
+      )}
+    </>
+  );
 }

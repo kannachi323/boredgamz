@@ -118,11 +118,15 @@ func (r *Room) addChatLocked(player *Player, content string) error {
 func (r *Room) snapshotLocked(viewer *Player) *Snapshot {
 	s := &Snapshot{RoomID: r.id, Mode: r.table.Mode, Phase: r.table.Phase, Community: append([]Card{}, r.table.Community...), Dealer: r.table.Dealer, Turn: r.table.Turn, Pot: r.table.Pot, AwardedPot: r.table.AwardedPot, CurrentBet: r.table.CurrentBet, MinimumRaise: r.table.MinimumRaise, Hand: r.table.Hand, Winners: append([]int{}, r.table.Winners...), WinningHand: r.table.WinningHand, Message: r.table.Message, Chat: append([]ChatMessage{}, r.chat...), Spectators: len(r.spectators), InviteCode: r.inviteCode, ActionDeadline: clonePokerTime(r.actionDeadline)}
 	for index, seat := range r.table.Seats {
-		view := &SeatView{ID: seat.ID, Name: seat.Name, Stack: seat.Stack, RoundBet: seat.RoundBet, TotalBet: seat.TotalBet, Folded: seat.Folded, AllIn: seat.AllIn, Connected: r.players[index].connected.Load(), CardCount: len(seat.Cards)}
+		view := &SeatView{ID: seat.ID, Name: seat.Name, Stack: seat.Stack, RoundBet: seat.RoundBet, TotalBet: seat.TotalBet, Folded: seat.Folded, AllIn: seat.AllIn, Connected: r.players[index].connected.Load(), Left: r.players[index].left.Load(), CardCount: len(seat.Cards)}
 		if r.table.Phase == "showdown" || (viewer != nil && viewer.Seat == index) {
 			view.Cards = append([]Card{}, seat.Cards...)
 		}
 		s.Seats[index] = view
+	}
+	s.ViewerSeat = -1
+	if viewer != nil {
+		s.ViewerID, s.ViewerSeat = viewer.ID, viewer.Seat
 	}
 	if viewer != nil && viewer.Seat >= 0 {
 		s.ToCall = r.table.ToCall(viewer.Seat)
@@ -215,4 +219,12 @@ func clonePokerTime(value *time.Time) *time.Time {
 	}
 	copy := *value
 	return &copy
+}
+
+// Broadcast sends every participant the current state. It runs when someone
+// joins or rejoins, so the others see them seated and connected again.
+func (r *Room) Broadcast() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.broadcastLocked()
 }

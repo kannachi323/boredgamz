@@ -18,11 +18,18 @@ type authRateLimiter struct {
 	windows map[string]authRateWindow
 	limit   int
 	window  time.Duration
+	message string
 	now     func() time.Time
 }
 
 func newAuthRateLimiter(limit int, window time.Duration) *authRateLimiter {
-	return &authRateLimiter{windows: map[string]authRateWindow{}, limit: limit, window: window, now: time.Now}
+	return newRateLimiter(limit, window, "too many authentication attempts")
+}
+
+// newRateLimiter is a fixed-window, per-client-IP limiter. State is in memory,
+// which matches the single-instance deployment model.
+func newRateLimiter(limit int, window time.Duration, message string) *authRateLimiter {
+	return &authRateLimiter{windows: map[string]authRateWindow{}, limit: limit, window: window, message: message, now: time.Now}
 }
 
 func (limiter *authRateLimiter) Middleware(next http.Handler) http.Handler {
@@ -30,7 +37,7 @@ func (limiter *authRateLimiter) Middleware(next http.Handler) http.Handler {
 		allowed, retryAfter := limiter.allow(clientAddress(r.RemoteAddr))
 		if !allowed {
 			w.Header().Set("Retry-After", strconv.Itoa(max(1, int(retryAfter.Seconds()))))
-			http.Error(w, "too many authentication attempts", http.StatusTooManyRequests)
+			http.Error(w, limiter.message, http.StatusTooManyRequests)
 			return
 		}
 		next.ServeHTTP(w, r)

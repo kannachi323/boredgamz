@@ -11,13 +11,14 @@ func TestPokerMatchmakingSeparatesModesAndPrivateCodes(t *testing.T) {
 	holdem, room, err := hub.Join(JoinOptions{PlayerID: "holdem-one", Name: "A", Mode: "holdem", InviteCode: "river"})
 	require.NoError(t, err)
 	require.Nil(t, room)
-	_, drawRoom, err := hub.Join(JoinOptions{PlayerID: "draw-one", Name: "B", Mode: "five-card-draw", InviteCode: "river"})
+	_, publicRoom, err := hub.Join(JoinOptions{PlayerID: "public-one", Name: "B", Mode: "holdem"})
 	require.NoError(t, err)
-	require.Nil(t, drawRoom)
+	require.Nil(t, publicRoom)
 	_, wrongCode, err := hub.Join(JoinOptions{PlayerID: "holdem-wrong", Name: "C", Mode: "holdem", InviteCode: "other"})
 	require.NoError(t, err)
 	require.Nil(t, wrongCode)
-	second, matched, err := hub.Join(JoinOptions{PlayerID: "holdem-two", Name: "D", Mode: "holdem", InviteCode: "RIVER"})
+	// The guest asks for a different mode; the host's Hold'em wins.
+	second, matched, err := hub.Join(JoinOptions{PlayerID: "holdem-two", Name: "D", Mode: "five-card-draw", InviteCode: "RIVER"})
 	require.NoError(t, err)
 	require.NotNil(t, matched)
 	require.Equal(t, "holdem", matched.table.Mode)
@@ -74,4 +75,20 @@ func TestPokerEmptyRoomCleanupReleasesAllMappings(t *testing.T) {
 	require.NotContains(t, hub.rooms, room.id)
 	require.NotContains(t, hub.playerRooms, first.ID)
 	require.NotContains(t, hub.playerRooms, second.ID)
+}
+
+func TestPokerDifferentTableLeavesOldRoom(t *testing.T) {
+	hub := NewHub()
+	first, _, err := hub.Join(JoinOptions{PlayerID: "move-a", Name: "A", Mode: "holdem", InviteCode: "PAAAAA"})
+	require.NoError(t, err)
+	_, room, err := hub.Join(JoinOptions{PlayerID: "move-b", Name: "B", Mode: "holdem", InviteCode: "PAAAAA"})
+	require.NoError(t, err)
+	_, same, err := hub.Join(JoinOptions{PlayerID: "move-a", Name: "A", Mode: "holdem", InviteCode: "PAAAAA"})
+	require.NoError(t, err)
+	require.Same(t, room, same)
+	_, other, err := hub.Join(JoinOptions{PlayerID: "move-a", Name: "A", Mode: "holdem", InviteCode: "PBBBBB"})
+	require.NoError(t, err)
+	require.Nil(t, other)
+	require.False(t, first.connected.Load())
+	require.Nil(t, hub.assignedRoom(first))
 }

@@ -35,6 +35,12 @@ func TestSnapshotsNeverLeakOpponentHoleCards(t *testing.T) {
 	require.Empty(t, bobView.Seats[0].Cards)
 	require.Empty(t, spectatorView.Seats[0].Cards)
 	require.Empty(t, spectatorView.Seats[1].Cards)
+	// Clients find their seat from viewerSeat because authenticated seat IDs
+	// are rewritten server-side and never equal the client's local ID.
+	require.Equal(t, 0, aliceView.ViewerSeat)
+	require.Equal(t, "alice", aliceView.ViewerID)
+	require.Equal(t, 1, bobView.ViewerSeat)
+	require.Equal(t, -1, spectatorView.ViewerSeat)
 }
 
 func TestShowdownRevealsBothHands(t *testing.T) {

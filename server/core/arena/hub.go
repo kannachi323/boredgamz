@@ -1,6 +1,7 @@
 package arena
 
 import (
+	"boredgamz/core/identity"
 	"errors"
 	"strings"
 	"sync"
@@ -71,10 +72,11 @@ func (h *Hub) JoinMatch(options JoinOptions) (*Player, *Room, error) {
 	}
 
 	player := newPlayer(options.PlayerID, options.PlayerName)
+	player.options = options
 	key := matchKey(options)
 	waiting := h.waiting[key]
-	if waiting == nil || !waiting.connected.Load() || waiting.ID == player.ID {
-		if waiting != nil && waiting.ID == player.ID {
+	if waiting == nil || !waiting.connected.Load() || identity.SameAccount(waiting.ID, player.ID) {
+		if waiting != nil && identity.SameAccount(waiting.ID, player.ID) {
 			waiting.connected.Store(false)
 		}
 		player.Mark = "one"
@@ -82,12 +84,13 @@ func (h *Hub) JoinMatch(options JoinOptions) (*Player, *Room, error) {
 		return player, nil, nil
 	}
 
-	game, gameErr := NewGameWithMode(options.Kind, options.Mode)
+	host := waiting.options
+	game, gameErr := NewGameWithMode(host.Kind, host.Mode)
 	if gameErr != nil {
 		return nil, nil, gameErr
 	}
 	waiting.Mark, player.Mark = "one", "two"
-	room := newRoom(uuid.NewString(), game, waiting, player, settingsFrom(options), h.scheduleCleanup)
+	room := newRoom(uuid.NewString(), game, waiting, player, settingsFrom(host), h.scheduleCleanup)
 	delete(h.waiting, key)
 	h.rooms[room.id] = room
 	h.playerRooms[waiting.ID], h.playerRooms[player.ID] = room, room
@@ -106,10 +109,20 @@ func (h *Hub) reconnectLocked(options JoinOptions) (*Player, *Room) {
 	existing.mu.Lock()
 	defer existing.mu.Unlock()
 	player := existing.participantByIDLocked(options.PlayerID)
-	if player != nil && existing.status != "archived" {
+	// A game in progress always resumes (you can't dodge a loss by asking for
+	// another table). Between rounds, a request for a different table means
+	// the player moved on: release the old seat and queue for the new one.
+	sameTable := matchKey(options) == matchKey(JoinOptions{Kind: existing.game.Kind, Mode: existing.settings.Mode, BestOf: existing.settings.BestOf, TimeControl: existing.settings.TimeControl, InviteCode: existing.settings.InviteCode})
+	if player != nil && existing.status != "archived" && (existing.status == "playing" || sameTable) {
 		player.replaceSender()
 		existing.updated = time.Now()
 		return player, existing
+	}
+	if player != nil && player.Mark != "spectator" {
+		player.connected.Store(false)
+		player.left.Store(true)
+		existing.updated = time.Now()
+		existing.broadcastStateLocked()
 	}
 	delete(h.playerRooms, options.PlayerID)
 	return nil, nil
@@ -121,6 +134,7 @@ func (h *Hub) LeaveRoom(player *Player, room *Room) {
 	}
 	room.mu.Lock()
 	player.connected.Store(false)
+	player.left.Store(true)
 	if player.Mark == "spectator" {
 		delete(room.spectators, player.ID)
 	} else if room.status == "playing" {
@@ -227,7 +241,12 @@ func normalizeJoinOptions(options JoinOptions) (JoinOptions, error) {
 	return options, nil
 }
 
+// matchKey queues public players by exact settings. A private code alone
+// identifies the table: whoever joins with it plays the host's settings.
 func matchKey(options JoinOptions) MatchKey {
+	if options.InviteCode != "" {
+		return MatchKey{Kind: options.Kind, InviteCode: options.InviteCode}
+	}
 	return MatchKey{Kind: options.Kind, Mode: options.Mode, BestOf: options.BestOf, TimeControl: options.TimeControl, InviteCode: options.InviteCode}
 }
 
@@ -237,4 +256,13 @@ func settingsFrom(options JoinOptions) RoomSettings {
 		visibility = "private"
 	}
 	return RoomSettings{Mode: options.Mode, BestOf: options.BestOf, TimeControl: options.TimeControl, Visibility: visibility, InviteCode: options.InviteCode}
+}
+
+// assignedRoom returns the room matchmaking put this player in, if any. A
+// socket can close before its loop notices the match; it must still count
+// as a disconnect from that room, not as leaving the queue.
+func (h *Hub) assignedRoom(player *Player) *Room {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.playerRooms[player.ID]
 }
